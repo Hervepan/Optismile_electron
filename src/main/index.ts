@@ -1,6 +1,8 @@
-import { app, BrowserWindow, shell } from "electron";
+import { app, BrowserWindow, shell, ipcMain } from "electron";
 import { join } from "path";
 import { is } from "@electron-toolkit/utils";
+
+const ALLOWED_AUTH_DOMAIN = "https://retnqcifgczqyygruima.supabase.co";
 
 // Register 'optismile' as the default protocol
 if (process.defaultApp) {
@@ -35,9 +37,11 @@ function createWindow() {
     mainWindow.show();
   });
 
-  // Security: Handle external links
+  // Security: Handle external links (General)
   mainWindow.webContents.setWindowOpenHandler((details) => {
-    shell.openExternal(details.url);
+    if (details.url.startsWith(ALLOWED_AUTH_DOMAIN)) {
+      shell.openExternal(details.url);
+    }
     return { action: "deny" };
   });
 
@@ -47,6 +51,15 @@ function createWindow() {
     mainWindow.loadFile(join(__dirname, "../renderer/index.html"));
   }
 }
+
+// IPC Handlers
+ipcMain.on("open-external-secure", (_event, url: string) => {
+  if (url.startsWith(ALLOWED_AUTH_DOMAIN)) {
+    shell.openExternal(url);
+  } else {
+    console.warn("Blocked attempt to open unauthorized URL:", url);
+  }
+});
 
 // Single instance lock
 const gotTheLock = app.requestSingleInstanceLock();
@@ -60,8 +73,9 @@ if (!gotTheLock) {
       if (mainWindow.isMinimized()) mainWindow.restore();
       mainWindow.focus();
 
-      const url = commandLine.pop();
-      if (url?.startsWith("optismile://")) {
+      const url = commandLine.find((arg) => arg.startsWith("optismile://login-callback"));
+      if (url) {
+        console.log("Deep link received (second instance):", url);
         mainWindow.webContents.send("deep-link", url);
       }
     }
@@ -69,6 +83,17 @@ if (!gotTheLock) {
 
   app.whenReady().then(() => {
     createWindow();
+
+    // Handle protocol launch on Windows/Linux
+    const url = process.argv.find((arg) => arg.startsWith("optismile://login-callback"));
+    if (url) {
+      const mainWindow = BrowserWindow.getAllWindows()[0];
+      if (mainWindow) {
+        mainWindow.webContents.on("did-finish-load", () => {
+          mainWindow.webContents.send("deep-link", url);
+        });
+      }
+    }
   });
 }
 
