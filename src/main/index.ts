@@ -1,31 +1,18 @@
-import { app, BrowserWindow, shell, ipcMain } from "electron";
+import { app, BrowserWindow, shell, ipcMain, globalShortcut } from "electron";
 import { join } from "path";
 import { is } from "@electron-toolkit/utils";
 
 const ALLOWED_AUTH_DOMAIN = "https://retnqcifgczqyygruima.supabase.co";
 
-// Register 'optismile' as the default protocol
-if (process.defaultApp) {
-  if (process.argv.length >= 2) {
-    app.setAsDefaultProtocolClient("optismile", process.execPath, [
-      join(__dirname, process.argv[1]),
-    ]);
-  }
-} else {
-  app.setAsDefaultProtocolClient("optismile");
-}
-
 function createWindow() {
-  // Path to the icon that works in both dev and production
   const iconPath = is.dev 
     ? join(__dirname, "../../resources/icon.png") 
     : join(__dirname, "../renderer/icons/optismile.png")
 
   const mainWindow = new BrowserWindow({
-    width: 400,
-    height: 500,
     show: false,
     autoHideMenuBar: true,
+    fullscreen: true,
     icon: iconPath,
     webPreferences: {
       preload: join(__dirname, "../preload/index.mjs"),
@@ -52,6 +39,34 @@ function createWindow() {
   }
 }
 
+function createPipWindow() {
+  const pipWindow = new BrowserWindow({
+    width: 350,
+    height: 120,
+    frame: false,
+    alwaysOnTop: true,
+    transparent: true,
+    resizable: true,
+    hasShadow: true,
+    webPreferences: {
+      preload: join(__dirname, "../preload/index.mjs"),
+      sandbox: false,
+    },
+  });
+
+  // Center on screen or position bottom right
+  const { screen } = require('electron');
+  const primaryDisplay = screen.getPrimaryDisplay();
+  const { width, height } = primaryDisplay.workAreaSize;
+  pipWindow.setPosition(width - 370, height - 150);
+
+  if (is.dev && process.env["ELECTRON_RENDERER_URL"]) {
+    pipWindow.loadURL(`${process.env["ELECTRON_RENDERER_URL"]}?mode=pip`);
+  } else {
+    pipWindow.loadFile(join(__dirname, "../renderer/index.html"), { query: { mode: 'pip' } });
+  }
+}
+
 // IPC Handlers
 ipcMain.on("open-external-secure", (_event, url: string) => {
   if (url.startsWith(ALLOWED_AUTH_DOMAIN)) {
@@ -75,7 +90,6 @@ if (!gotTheLock) {
 
       const url = commandLine.find((arg) => arg.startsWith("optismile://login-callback"));
       if (url) {
-        console.log("Deep link received (second instance):", url);
         mainWindow.webContents.send("deep-link", url);
       }
     }
@@ -84,16 +98,10 @@ if (!gotTheLock) {
   app.whenReady().then(() => {
     createWindow();
 
-    // Handle protocol launch on Windows/Linux
-    const url = process.argv.find((arg) => arg.startsWith("optismile://login-callback"));
-    if (url) {
-      const mainWindow = BrowserWindow.getAllWindows()[0];
-      if (mainWindow) {
-        mainWindow.webContents.on("did-finish-load", () => {
-          mainWindow.webContents.send("deep-link", url);
-        });
-      }
-    }
+    // Register Alt+V as the global shortcut
+    globalShortcut.register('Alt+V', () => {
+      createPipWindow();
+    });
   });
 }
 
@@ -101,4 +109,8 @@ app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
     app.quit();
   }
+});
+
+app.on('will-quit', () => {
+  globalShortcut.unregisterAll();
 });
