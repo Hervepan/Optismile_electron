@@ -6,3 +6,6 @@ out
 .env
 .env.*
 !.env.example
+
+# Reference code (not part of the Electron project)
+chrome_extension_version/
