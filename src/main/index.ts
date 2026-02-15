@@ -1,0 +1,79 @@
+import { app, BrowserWindow, shell } from "electron";
+import { join } from "path";
+import { is } from "@electron-toolkit/utils";
+
+// Register 'optismile' as the default protocol
+if (process.defaultApp) {
+  if (process.argv.length >= 2) {
+    app.setAsDefaultProtocolClient("optismile", process.execPath, [
+      join(__dirname, process.argv[1]),
+    ]);
+  }
+} else {
+  app.setAsDefaultProtocolClient("optismile");
+}
+
+function createWindow() {
+  // Path to the icon that works in both dev and production
+  const iconPath = is.dev 
+    ? join(__dirname, "../../resources/icon.png") 
+    : join(__dirname, "../renderer/icons/optismile.png")
+
+  const mainWindow = new BrowserWindow({
+    width: 400,
+    height: 500,
+    show: false,
+    autoHideMenuBar: true,
+    icon: iconPath,
+    webPreferences: {
+      preload: join(__dirname, "../preload/index.mjs"),
+      sandbox: false,
+    },
+  });
+
+  mainWindow.on("ready-to-show", () => {
+    mainWindow.show();
+  });
+
+  // Security: Handle external links
+  mainWindow.webContents.setWindowOpenHandler((details) => {
+    shell.openExternal(details.url);
+    return { action: "deny" };
+  });
+
+  if (is.dev && process.env["ELECTRON_RENDERER_URL"]) {
+    mainWindow.loadURL(process.env["ELECTRON_RENDERER_URL"]);
+  } else {
+    mainWindow.loadFile(join(__dirname, "../renderer/index.html"));
+  }
+}
+
+// Single instance lock
+const gotTheLock = app.requestSingleInstanceLock();
+
+if (!gotTheLock) {
+  app.quit();
+} else {
+  app.on("second-instance", (_, commandLine) => {
+    const mainWindow = BrowserWindow.getAllWindows()[0];
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.focus();
+
+      const url = commandLine.pop();
+      if (url?.startsWith("optismile://")) {
+        mainWindow.webContents.send("deep-link", url);
+      }
+    }
+  });
+
+  app.whenReady().then(() => {
+    createWindow();
+  });
+}
+
+app.on("window-all-closed", () => {
+  if (process.platform !== "darwin") {
+    app.quit();
+  }
+});

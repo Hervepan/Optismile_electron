@@ -1,0 +1,24 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "lib": ["DOM", "DOM.Iterable", "ESNext"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "esModuleInterop": true,
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/renderer/src/*"],
+      "@renderer/*": ["./src/renderer/src/*"],
+      "@components/*": ["./src/renderer/src/components/*"],
+      "@hooks/*": ["./src/renderer/src/hooks/*"],
+      "@lib/*": ["./src/renderer/src/lib/*"]
+    }
+  },
+  "include": ["src"]
+}
