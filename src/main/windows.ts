@@ -19,6 +19,8 @@ export class WindowManager {
       : join(__dirname, "../renderer/icons/optismile.png")
 
     const mainWindow = new BrowserWindow({
+      width: 1280,
+      height: 800,
       show: false,
       autoHideMenuBar: true,
       icon: iconPath,
@@ -70,8 +72,8 @@ export class WindowManager {
     const configKey = isPip ? 'pipBounds' : 'saveBounds';
     const savedBounds = config[configKey];
 
-    const width = savedBounds?.width ?? (isPip ? 350 : 600);
-    const height = savedBounds?.height ?? (isPip ? 100 : 550);
+    const width = savedBounds?.width ?? (isPip ? 400 : 650);
+    const height = savedBounds?.height ?? (isPip ? 120 : 650);
 
     const activeDisplay = screen.getDisplayNearestPoint(screen.getCursorScreenPoint());
     const { x: dx, y: dy, width: dw, height: dh } = activeDisplay.workArea;

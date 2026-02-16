@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@lib/supabase/client'
 import { CategoryManager } from '@/features/dashboard/components/CategoryManager'
+import { HistorySection } from '@/features/dashboard/components/HistorySection'
 import { User } from '@supabase/supabase-js'
 import { 
     Tabs, 
@@ -28,7 +29,7 @@ export function DashboardPage({ user }: { user: User }) {
         <div className="min-h-screen bg-slate-50/50 font-sans select-none">
             <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
                 <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-                    <div className="container max-w-7xl mx-auto flex h-16 items-center justify-between px-4 sm:px-8">
+                    <div className="container max-w-[1400px] mx-auto flex h-16 items-center justify-between px-4 sm:px-8">
                         <div className="flex items-center gap-8">
                             <div className="flex items-center gap-2">
                                 <img src="icons/optismile.png" alt="OptiSmile" className="h-8 w-8" />
@@ -76,19 +77,13 @@ export function DashboardPage({ user }: { user: User }) {
                     </div>
                 </header>
 
-                <main className="container max-w-7xl mx-auto p-4 sm:p-8 space-y-6">
+                <main className="container max-w-[1400px] mx-auto p-4 sm:p-8 space-y-6">
                     <TabsContent value="activities" className="mt-0 focus-visible:ring-0 focus-visible:ring-offset-0">
                         <CategoryManager />
                     </TabsContent>
                     
                     <TabsContent value="history" className="mt-0 focus-visible:ring-0 focus-visible:ring-offset-0">
-                        <div className="flex flex-col items-center justify-center min-h-[400px] text-center space-y-4 border border-dashed border-zinc-200 rounded-xl bg-white/50">
-                            <div className="rounded-full bg-primary/5 p-6">
-                                <History className="h-12 w-12 text-zinc-300" />
-                            </div>
-                            <h2 className="text-xl font-bold tracking-tight">Session History</h2>
-                            <p className="text-muted-foreground max-w-md text-sm">Porting from extension in the next step.</p>
-                        </div>
+                        <HistorySection />
                     </TabsContent>
 
                     <TabsContent value="statistics" className="mt-0 focus-visible:ring-0 focus-visible:ring-offset-0">

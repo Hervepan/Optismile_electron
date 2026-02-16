@@ -143,3 +143,17 @@ export const getSessions = async (): Promise<Session[]> => {
   if (error) throw error;
   return data || [];
 };
+
+export const updateSessionComment = async (id: string, comment: string) => {
+  const { error } = await supabase
+    .from("Sessions")
+    .update({ comment })
+    .eq("id", id);
+
+  if (error) throw error;
+};
+
+export const deleteSession = async (id: string) => {
+  const { error } = await supabase.from("Sessions").delete().eq("id", id);
+  if (error) throw error;
+};
