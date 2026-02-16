@@ -13,7 +13,7 @@ export const signInWithGoogle = async (): Promise<void> => {
 
   if (data?.url) {
     // Securely delegate opening the browser to the Main process
-    (window as any).api.auth.openExternal(data.url);
+    window.api.auth.openExternal(data.url);
   }
 };
 

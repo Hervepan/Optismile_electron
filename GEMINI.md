@@ -23,10 +23,17 @@ you can always refer to the "chrome_extension_version" directory when trying to 
 - **UI Foundation:** Initial Login UI created and 15 shadcn/ui components installed/configured.
 - **Protocol & Deep Linking:** `optismile://login-callback` registered and single-instance lock implemented with robust `.find()` argument parsing.
 - **Authentication:** Supabase OAuth (Google) and Email/Password implemented with secure IPC bridge and `.env` support.
+- **UI Refinement:** Implemented a dual-window "Pro" flow (PIP Timer -> Centered Save Window) with persistent bounds and Windows resizability fixes.
+
+## ⚠️ Known Issues & Feedback
+- **Missing Close Buttons:** The `SaveSessionPage` (Category Selector window) currently lacks a close button, making it hard to cancel.
+- **PIP Hover State:** The close button in the PIP Timer is hidden on hover; consider making it more visible or persistent if requested.
+- **Layout:** Ensure all windows utilize the `.app-container` and `4px` padding strategy for consistent Windows resizing support.
 
 ## 🚀 Next Steps
 
-- **Session Focus: Supabase OAuth**
-  - Port Supabase client and auth logic.
-  - Implement the bridge between the browser OAuth flow and the Electron app.
-  - Verify deep-link token handling (`optismile://auth-callback`) to ensure the session is correctly established in the native app.
+- **Migration Completion:**
+  - Finish the **History page**: Port logic and UI from the chrome extension version.
+  - Finish the **Stats page**: Port logic and UI from the chrome extension version.
+  - Fix **Missing Close Buttons**: Add close/cancel buttons to the `SaveSessionPage`.
+  - Refine **PIP Window**: Consider making the close button more persistent for better UX.
