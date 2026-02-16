@@ -27,7 +27,7 @@ import {
     formatSecondsToHuman,
     parseHumanToSeconds,
     type Category
-} from "../../../lib/supabase/database"
+} from "@lib/supabase/database"
 import { CategoryCreator } from "./CategoryCreator"
 
 export function CategoryManager() {

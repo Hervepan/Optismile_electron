@@ -1,5 +1,5 @@
 import React from 'react'
-import { signInWithGoogle } from '../../lib/supabase/auth'
+import { signInWithGoogle } from '@lib/supabase/auth'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'

@@ -1,4 +1,4 @@
-import { TimerDisplay } from './components/TimerDisplay'
+import { TimerDisplay } from '@/features/timer/components/TimerDisplay'
 import { X } from 'lucide-react'
 
 export function TimerPage({ user }: { user: any }) {

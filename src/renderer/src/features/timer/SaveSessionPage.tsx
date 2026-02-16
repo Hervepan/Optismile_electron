@@ -1,4 +1,4 @@
-import { CategorySelector } from './components/CategorySelector'
+import { CategorySelector } from '@/features/timer/components/CategorySelector'
 
 export function SaveSessionPage({ user }: { user: any }) {
     const params = new URLSearchParams(window.location.search);

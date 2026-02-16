@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react'
-import { getCategories, saveSession, saveCategory, type Category } from '../../../lib/supabase/database'
+import { getCategories, saveSession, saveCategory, type Category } from '@lib/supabase/database'
 import { Loader2, X, Plus, ArrowLeft } from 'lucide-react'
-import { Button } from "../../../components/ui/button"
-import { Textarea } from "../../../components/ui/textarea"
+import { Button } from "@components/ui/button"
+import { Textarea } from "@components/ui/textarea"
 import {
     Combobox,
     ComboboxInput,
@@ -10,8 +10,8 @@ import {
     ComboboxList,
     ComboboxItem,
     ComboboxEmpty,
-} from "../../../components/ui/combobox"
-import { CategoryCreator } from "../../dashboard/components/CategoryCreator"
+} from "@components/ui/combobox"
+import { CategoryCreator } from "@/features/dashboard/components/CategoryCreator"
 
 export function CategorySelector({ duration, onSaved, isAuthenticated }: any) {
     const [categories, setCategories] = useState<Category[]>([])

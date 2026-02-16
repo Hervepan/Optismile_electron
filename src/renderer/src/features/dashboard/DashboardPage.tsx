@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { supabase } from '../../lib/supabase/client'
-import { CategoryManager } from './components/CategoryManager'
+import { supabase } from '@lib/supabase/client'
+import { CategoryManager } from '@/features/dashboard/components/CategoryManager'
 import { User } from '@supabase/supabase-js'
 import { 
     Tabs, 

@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button'
-import { useTimer } from '../hooks/useTimer'
+import { useTimer } from '@/features/timer/hooks/useTimer'
 import { Play, Pause, Square, AlertTriangle } from 'lucide-react'
 
 interface TimerProps {
@@ -22,9 +22,15 @@ export function TimerDisplay({ onFinish, isAuthenticated }: TimerProps) {
     }, [stop, onFinish]);
 
     const handleStop = () => {
+        if (seconds === 0) return;
         const finalTime = stopRef.current();
         onFinishRef.current(finalTime);
     }
+
+    const handleStopRef = useRef(handleStop);
+    useEffect(() => {
+        handleStopRef.current = handleStop;
+    }, [handleStop]);
 
     useEffect(() => { 
         start() 
@@ -35,7 +41,7 @@ export function TimerDisplay({ onFinish, isAuthenticated }: TimerProps) {
     useEffect(() => {
         const removeListener = window.api.auth.onShortcutPressed(() => {
             console.log("Timer stop triggered via global shortcut");
-            handleStop();
+            handleStopRef.current();
         });
 
         return () => removeListener();
