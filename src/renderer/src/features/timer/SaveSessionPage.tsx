@@ -9,7 +9,7 @@ export function SaveSessionPage({ user }: { user: any }) {
     };
 
     return (
-        <div className="app-container">
+        <div className="app-container h-screen overflow-hidden">
             <CategorySelector 
                 duration={duration} 
                 onSaved={handleSaved} 

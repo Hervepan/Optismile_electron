@@ -1,7 +1,8 @@
 import { app, BrowserWindow, ipcMain, globalShortcut, shell } from "electron";
 import { join } from "path";
-import { getConfig, saveConfig } from "./config";
-import { windowManager } from "./windows";
+import { getConfig, saveConfig } from "@main/config";
+import { windowManager } from "@main/windows";
+import { trayManager } from "@main/tray";
 
 // --- IPC Handlers ---
 
@@ -88,12 +89,16 @@ if (!gotTheLock) {
 
   app.whenReady().then(() => {
     windowManager.createMainWindow();
+    trayManager.createTray();
     registerPipShortcut(getConfig().shortcut || "Alt+J");
   });
 }
 
 app.on("window-all-closed", () => {
-  if (process.platform !== "darwin") app.quit();
+  // Keeping the app alive in the background (System Tray)
+  if (process.platform === "darwin") {
+    app.dock?.hide();
+  }
 });
 
 app.on('will-quit', () => {

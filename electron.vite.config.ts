@@ -5,10 +5,18 @@ import { resolve } from 'path'
 
 export default defineConfig({
   main: {
-    // Externalization is now automatic in v5+
+    resolve: {
+      alias: {
+        '@main': resolve('src/main')
+      }
+    }
   },
   preload: {
-    // Externalization is now automatic in v5+
+    resolve: {
+      alias: {
+        '@preload': resolve('src/preload')
+      }
+    }
   },
   renderer: {
     resolve: {

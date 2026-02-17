@@ -5,35 +5,43 @@ you can always refer to the "chrome_extension_version" directory when trying to 
 ## 🛠 Asset & Pathing Protocol (CRITICAL)
 
 - **Renderer Assets:** Always use **relative paths** for images and assets in React components (e.g., `src="icons/logo.png"` instead of `src="/icons/logo.png"`). Absolute paths starting with `/` fail to resolve correctly under the `file://` protocol used in packaged Electron apps.
+- **Path Aliases:** Strictly enforced for all imports across the codebase.
+    - **Renderer:** `@/` (src/renderer/src), `@lib/`, `@hooks/`, `@components/`
+    - **Main Process:** `@main/` (src/main)
+    - **Preload:** `@preload/` (src/preload)
+- **Relative Paths:** Forbidden in production source (`../../`) to prevent technical debt and ensure maintainability.
 - **Main Process Paths:** Use `join(__dirname, ...)` for all file resolutions to ensure compatibility across Dev and Production (ASAR) environments.
 - **Preload Extension:** In ESM projects (`"type": "module"`), the preload script must be referenced as `index.mjs` in the Main process `webPreferences`.
 
 ## 🏗 Architecture
 
 - **Stack:** Electron + Vite + React + Tailwind 4 + shadcn/ui.
+- **Main Process:** Fully modularized for maximum maintainability:
+    - `index.ts`: Central orchestration, lifecycle, and IPC handlers.
+    - `windows.ts`: `WindowManager` class handling multi-window creation, monitor-aware positioning, and navigation guards.
+    - `tray.ts`: `TrayManager` handling System Tray integration and background persistence.
+    - `config.ts`: User preference persistence (JSON).
+- **Background Persistence:** The app remains active in the System Tray when windows are closed. Global shortcuts stay responsive. Users must explicitly "Quit" from the Tray menu.
+- **Statistics Engine:** Decoupled architecture. Math logic lives in pure, unit-testable functions in `@lib/stats-utils.ts`. Data is handled via specialized composable hooks (`useSessionsFetch` and `useStatistics`).
+- **UI:** Powered by Tailwind 4 + shadcn/ui. Complex data views use **Skeletons** for professional loading states.
 - **Bundling:** `electron-vite` v5+ (Externalization is automatic).
 - **Targets:** Windows NSIS and Portable EXE.
 - **Build Workflow:** Always use `npm run build:win` for production artifacts. This runs a Linux-hosted Docker container with Wine to cross-compile the Windows binaries.
 
 ## ✅ Progress Log
 
-- **Project Scaffolded:** Clean Electron-Vite setup with React 19 and Tailwind 4.
-- **Build System Verified:** Successfully cross-compiled a Windows NSIS installer via Docker.
-- **Asset Pathing:** Implemented relative pathing for renderer assets and robust native icon resolution.
-- **UI Foundation:** Initial Login UI created and 15 shadcn/ui components installed/configured.
-- **Protocol & Deep Linking:** `optismile://login-callback` registered and single-instance lock implemented with robust `.find()` argument parsing.
-- **Authentication:** Supabase OAuth (Google) and Email/Password implemented with secure IPC bridge and `.env` support.
-- **UI Refinement:** Implemented a dual-window "Pro" flow (PIP Timer -> Centered Save Window) with persistent bounds and Windows resizability fixes.
-
-## ⚠️ Known Issues & Feedback
-- **Missing Close Buttons:** The `SaveSessionPage` (Category Selector window) currently lacks a close button, making it hard to cancel.
-- **PIP Hover State:** The close button in the PIP Timer is hidden on hover; consider making it more visible or persistent if requested.
-- **Layout:** Ensure all windows utilize the `.app-container` and `4px` padding strategy for consistent Windows resizing support.
+- **Modular Architecture:** Successfully refactored Main process into a scalable, multi-file structure.
+- **System Tray:** Implemented with context menu and "minimize to tray" behavior for background productivity.
+- **Deep Linking & Protocol:** `optismile://` registered and handled securely for Supabase OAuth callbacks.
+- **Global Bridge (IPC):** Secured and type-safe `window.api` bridge with a dedicated `index.d.ts` declaration.
+- **Authentication:** Supabase OAuth (Google) and Email/Password with professional toast feedback and `User` type safety.
+- **Activity Manager:** Fully functional category CRUD with toast notifications and `AlertDialog` confirmations.
+- **Session History:** Completed with chronological sorting, filtering (Date/Category), inline editing, and deletion.
+- **Statistics Dashboard:** Faithfully ported from extension with Recharts (Bar/Line), Std Dev consistency metrics, and Success Rate tracking.
+- **Window Management:** Dual-window "Pro" flow (PIP Timer -> Centered Save Window) with native resizing handles restored, 0-duration guards, and cross-window state blocking.
 
 ## 🚀 Next Steps
 
-- **Migration Completion:**
-  - Finish the **History page**: Port logic and UI from the chrome extension version.
-  - Finish the **Stats page**: Port logic and UI from the chrome extension version.
-  - Fix **Missing Close Buttons**: Add close/cancel buttons to the `SaveSessionPage`.
-  - Refine **PIP Window**: Consider making the close button more persistent for better UX.
+- **Refinement:**
+  - Fine-tune the PIP window hover states and persistence if needed.
+  - Implement any additional requested productivity visualizations.

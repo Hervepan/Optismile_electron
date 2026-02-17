@@ -17,7 +17,9 @@
       "@renderer/*": ["./src/renderer/src/*"],
       "@components/*": ["./src/renderer/src/components/*"],
       "@hooks/*": ["./src/renderer/src/hooks/*"],
-      "@lib/*": ["./src/renderer/src/lib/*"]
+      "@lib/*": ["./src/renderer/src/lib/*"],
+      "@main/*": ["./src/main/*"],
+      "@preload/*": ["./src/preload/*"]
     }
   },
   "include": ["src"]

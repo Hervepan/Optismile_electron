@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '@lib/supabase/client'
 import { CategoryManager } from '@/features/dashboard/components/CategoryManager'
 import { HistorySection } from '@/features/dashboard/components/HistorySection'
+import { StatisticsSection } from '@/features/dashboard/components/stats/StatisticsSection'
 import { User } from '@supabase/supabase-js'
 import { 
     Tabs, 
@@ -62,13 +63,17 @@ export function DashboardPage({ user }: { user: User }) {
                         </div>
 
                         <div className="flex items-center gap-4">
-                            <div className="flex flex-col items-end mr-2">
-                                <span className="text-sm font-semibold text-zinc-900 leading-none mb-1">{user.email?.split('@')[0]}</span>
-                                <span className="text-[10px] text-zinc-400 font-medium">{user.email}</span>
+                            <div className="flex items-center gap-2 py-1 px-3 bg-zinc-50 rounded-full border border-zinc-100">
+                                <div className="h-6 w-6 rounded-full bg-white border border-zinc-200 flex items-center justify-center">
+                                    <div className="text-[10px] font-bold text-zinc-400 uppercase">{user.email?.[0]}</div>
+                                </div>
+                                <span className="text-xs font-semibold text-zinc-600 truncate max-w-[200px]">
+                                    {user.email}
+                                </span>
                             </div>
                             <button 
                                 onClick={() => supabase.auth.signOut()}
-                                className="p-2 text-zinc-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-all active:scale-95"
+                                className="p-2 text-zinc-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-all active:scale-95"
                                 title="Sign Out"
                             >
                                 <LogOut size={18} />
@@ -87,13 +92,7 @@ export function DashboardPage({ user }: { user: User }) {
                     </TabsContent>
 
                     <TabsContent value="statistics" className="mt-0 focus-visible:ring-0 focus-visible:ring-offset-0">
-                        <div className="flex flex-col items-center justify-center min-h-[400px] text-center space-y-4 border border-dashed border-zinc-200 rounded-xl bg-white/50">
-                            <div className="rounded-full bg-primary/5 p-6">
-                                <BarChart3 className="h-12 w-12 text-zinc-300" />
-                            </div>
-                            <h2 className="text-xl font-bold tracking-tight">Performance Statistics</h2>
-                            <p className="text-muted-foreground max-w-md text-sm">Porting from extension in the next step.</p>
-                        </div>
+                        <StatisticsSection />
                     </TabsContent>
                 </main>
             </Tabs>

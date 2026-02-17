@@ -8,7 +8,7 @@ export function TimerPage({ user }: { user: any }) {
     };
 
     return (
-        <div className="app-container group">
+        <div className="app-container h-screen overflow-hidden group">
             {/* Ultra-slim Drag handle & Close button */}
             <div className="drag-handle h-6 w-full flex justify-end items-center px-2 bg-zinc-50/50 border-b border-zinc-100 opacity-0 group-hover:opacity-100 transition-opacity">
                 <button 

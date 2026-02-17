@@ -1,7 +1,7 @@
 import { BrowserWindow, screen, shell } from "electron";
 import { join } from "path";
 import { is } from "@electron-toolkit/utils";
-import { getConfig, saveConfig } from "./config";
+import { getConfig, saveConfig } from "@main/config";
 
 export type WindowMode = 'pip' | 'save';
 
