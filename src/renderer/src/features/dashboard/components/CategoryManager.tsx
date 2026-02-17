@@ -1,5 +1,4 @@
-import { useState, useEffect } from 'react'
-import { Pencil, Trash2, Check, X, Loader2, FolderPlus, Keyboard } from 'lucide-react'
+import { Pencil, Trash2, Check, X, Loader2, FolderPlus, Keyboard, Timer, Bell } from 'lucide-react'
 import { Button } from "../../../components/ui/button"
 import { Input } from "../../../components/ui/input"
 import { toast } from 'sonner'
@@ -26,30 +25,43 @@ import {
     updateCategory,
     formatSecondsToHuman,
     parseHumanToSeconds,
+    countSessionsByCategory,
     type Category
 } from "@lib/supabase/database"
 import { CategoryCreator } from "./CategoryCreator"
+import { useState, useEffect } from "react";
 
 export function CategoryManager() {
     const [categories, setCategories] = useState<Category[]>([])
     const [isLoading, setIsLoading] = useState(true)
     const [shortcut, setShortcut] = useState<string>("Alt+J")
     const [newShortcut, setNewShortcut] = useState("")
+    const [nudgeDuration, setNudgeDuration] = useState<number>(5)
+    const [newNudgeDuration, setNewNudgeDuration] = useState<string>("")
 
     // Edit state
     const [editingId, setEditingId] = useState<string | null>(null)
     const [editingName, setEditingName] = useState("")
     const [editingTarget, setEditingTarget] = useState("")
     const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null)
+    const [associatedSessionsCount, setAssociatedSessionsCount] = useState<number>(0)
+    const [isCheckingSessions, setIsCheckingSessions] = useState(false)
 
     useEffect(() => {
         fetchCategories()
         fetchShortcut()
+        fetchNudgeDuration()
     }, [])
 
     const fetchShortcut = () => {
         window.api.settings.getShortcut().then((s: string) => {
             if (s) setShortcut(s)
+        })
+    }
+
+    const fetchNudgeDuration = () => {
+        window.api.settings.getNudgeDuration().then((d: number) => {
+            if (d) setNudgeDuration(d)
         })
     }
 
@@ -64,7 +76,7 @@ export function CategoryManager() {
     const handleUpdateShortcut = async (e: React.FormEvent) => {
         e.preventDefault()
         if (!newShortcut.trim()) return
-        
+
         const success = await window.api.settings.updateShortcut(newShortcut)
         if (success) {
             setShortcut(newShortcut)
@@ -72,6 +84,22 @@ export function CategoryManager() {
             toast.success("Shortcut updated successfully")
         } else {
             toast.error("Invalid shortcut format")
+        }
+    }
+
+    const handleUpdateNudgeDuration = async (e: React.FormEvent) => {
+        e.preventDefault()
+        const val = parseInt(newNudgeDuration)
+        if (isNaN(val) || val < 1 || val > 60) {
+            toast.error("Duration must be between 1 and 60 minutes")
+            return
+        }
+
+        const success = await window.api.settings.updateNudgeDuration(val)
+        if (success) {
+            setNudgeDuration(val)
+            setNewNudgeDuration('')
+            toast.success("Nudge duration updated")
         }
     }
 
@@ -93,6 +121,19 @@ export function CategoryManager() {
             await fetchCategories()
         } catch (err) {
             toast.error("Failed to create category")
+        }
+    }
+
+    const handlePrepareDelete = async (cat: Category) => {
+        setIsCheckingSessions(true)
+        try {
+            const count = await countSessionsByCategory(cat.id)
+            setAssociatedSessionsCount(count)
+            setCategoryToDelete(cat)
+        } catch (err) {
+            toast.error("Error checking category sessions")
+        } finally {
+            setIsCheckingSessions(false)
         }
     }
 
@@ -127,7 +168,7 @@ export function CategoryManager() {
             <div className="lg:col-span-1 space-y-6">
                 <CategoryCreator onSubmit={handleCreate} />
 
-                 <Card className="border-zinc-200 shadow-none bg-white">
+                <Card className="border-zinc-200 shadow-none bg-white">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium">Global Shortcut</CardTitle>
                         <Keyboard className="h-4 w-4 text-zinc-400" />
@@ -135,22 +176,52 @@ export function CategoryManager() {
                     <CardContent>
                         <div className="text-2xl font-bold mb-4">{formatShortcutDisplay(shortcut)}</div>
                         <p className="text-xs text-zinc-500 mb-4">Launch acquisition session</p>
-                        
+
                         <form onSubmit={handleUpdateShortcut} className="space-y-3">
-                            <Input 
-                                placeholder="e.g. Alt+J" 
+                            <Input
+                                placeholder="e.g. Alt+J"
                                 value={newShortcut}
                                 onChange={(e) => setNewShortcut(e.target.value)}
                                 className="h-9 text-sm border-zinc-200"
                             />
-                            <Button 
+                            <Button
                                 type="submit"
-                                variant="outline" 
-                                size="sm" 
+                                variant="outline"
+                                size="sm"
                                 className="w-full text-xs h-8"
                             >
                                 <Keyboard className="w-3 h-3 mr-2" />
                                 Update
+                            </Button>
+                        </form>
+                    </CardContent>
+                </Card>
+
+                <Card className="border-zinc-200 shadow-none bg-white">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Reminder Nudge</CardTitle>
+                        <Bell className="h-4 w-4 text-zinc-400" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold mb-4">{nudgeDuration}m</div>
+                        <p className="text-xs text-zinc-500 mb-4">Auto-dismiss timeout for reminders</p>
+
+                        <form onSubmit={handleUpdateNudgeDuration} className="space-y-3">
+                            <Input
+                                type="number"
+                                placeholder="Minutes (1-60)"
+                                value={newNudgeDuration}
+                                onChange={(e) => setNewNudgeDuration(e.target.value)}
+                                className="h-9 text-sm border-zinc-200"
+                            />
+                            <Button
+                                type="submit"
+                                variant="outline"
+                                size="sm"
+                                className="w-full text-xs h-8"
+                            >
+                                <Timer className="w-3 h-3 mr-2" />
+                                Update Duration
                             </Button>
                         </form>
                     </CardContent>
@@ -166,8 +237,8 @@ export function CategoryManager() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {categories.length > 0 ? (
                             categories.map((cat) => {
-                                const editingTargetSeconds = editingId === cat.id && editingTarget.trim() 
-                                    ? parseHumanToSeconds(editingTarget) 
+                                const editingTargetSeconds = editingId === cat.id && editingTarget.trim()
+                                    ? parseHumanToSeconds(editingTarget)
                                     : null;
 
                                 return (
@@ -175,8 +246,8 @@ export function CategoryManager() {
                                         {editingId === cat.id ? (
                                             <div className="p-4 flex flex-col gap-3">
                                                 <div className="flex flex-col gap-2">
-                                                     <label className="text-xs font-medium text-zinc-500">Name</label>
-                                                     <Input
+                                                    <label className="text-xs font-medium text-zinc-500">Name</label>
+                                                    <Input
                                                         value={editingName}
                                                         onChange={(e) => setEditingName(e.target.value)}
                                                         className="h-8 text-sm"
@@ -184,8 +255,8 @@ export function CategoryManager() {
                                                     />
                                                 </div>
                                                 <div className="flex flex-col gap-2">
-                                                     <label className="text-xs font-medium text-zinc-500">Target Time</label>
-                                                     <Input
+                                                    <label className="text-xs font-medium text-zinc-500">Target Time</label>
+                                                    <Input
                                                         value={editingTarget}
                                                         onChange={(e) => setEditingTarget(e.target.value)}
                                                         className="h-8 text-sm"
@@ -215,7 +286,7 @@ export function CategoryManager() {
                                                         {cat.name}
                                                     </CardTitle>
                                                     <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                         <Button
+                                                        <Button
                                                             size="icon"
                                                             variant="ghost"
                                                             className="h-6 w-6 text-zinc-400 hover:text-blue-600"
@@ -227,13 +298,14 @@ export function CategoryManager() {
                                                         >
                                                             <Pencil className="h-3 w-3" />
                                                         </Button>
-                                                         <Button
+                                                        <Button
                                                             size="icon"
                                                             variant="ghost"
+                                                            disabled={isCheckingSessions}
                                                             className="h-6 w-6 text-zinc-400 hover:text-red-600"
-                                                            onClick={() => setCategoryToDelete(cat)}
+                                                            onClick={() => handlePrepareDelete(cat)}
                                                         >
-                                                            <Trash2 className="h-3 w-3" />
+                                                            {isCheckingSessions ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
                                                         </Button>
                                                     </div>
                                                 </CardHeader>
@@ -263,19 +335,35 @@ export function CategoryManager() {
             <AlertDialog open={!!categoryToDelete} onOpenChange={(open) => !open && setCategoryToDelete(null)}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                        <AlertDialogTitle>
+                            {associatedSessionsCount > 0 ? "Category is Locked" : "Are you absolutely sure?"}
+                        </AlertDialogTitle>
                         <AlertDialogDescription>
-                            This will permanently delete the <span className="font-bold text-zinc-900">"{categoryToDelete?.name}"</span> category and all associated data.
+                            {associatedSessionsCount > 0 ? (
+                                <>
+                                    The category <span className="font-bold text-zinc-900">"{categoryToDelete?.name}"</span> has <span className="font-bold text-red-600">{associatedSessionsCount} sessions</span> associated with it.
+                                    <br /><br />
+                                    To maintain data integrity, you must delete these sessions in the <span className="font-medium text-zinc-900">History</span> tab before this category can be removed.
+                                </>
+                            ) : (
+                                <>
+                                    This will permanently delete the <span className="font-bold text-zinc-900">"{categoryToDelete?.name}"</span> category. This action cannot be undone.
+                                </>
+                            )}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction 
-                            onClick={() => categoryToDelete && handleDelete(categoryToDelete.id)}
-                            className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
-                        >
-                            Delete
-                        </AlertDialogAction>
+                        <AlertDialogCancel>
+                            {associatedSessionsCount > 0 ? "Close" : "Cancel"}
+                        </AlertDialogCancel>
+                        {associatedSessionsCount === 0 && (
+                            <AlertDialogAction
+                                onClick={() => categoryToDelete && handleDelete(categoryToDelete.id)}
+                                className="bg-red-600 hover:bg-red-700 focus:ring-red-600 text-white"
+                            >
+                                Delete
+                            </AlertDialogAction>
+                        )}
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>

@@ -38,7 +38,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Check, X, Pencil, Trash2, Loader2, Calendar as CalendarIcon, History } from "lucide-react"
-import { getSessions, updateSessionComment, deleteSession, type Session } from "@lib/supabase/database"
+import { getSessions, updateSessionComment, deleteSession, deleteSessions, type Session } from "@lib/supabase/database"
 import { formatSecondsToHuman } from "@lib/time"
 import { Calendar } from "@/components/ui/calendar"
 import {
@@ -62,8 +62,13 @@ export function HistorySection() {
     const [editingId, setEditingId] = useState<string | null>(null)
     const [editingComment, setEditingComment] = useState("")
     
+    // Selection state
+    const [selectedIds, setSelectedIds] = useState<string[]>([])
+    
     // Delete state
     const [sessionToDelete, setSessionToDelete] = useState<Session | null>(null)
+    const [isBulkDeleting, setIsBulkDeleting] = useState(false)
+    const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false)
 
     useEffect(() => {
         fetchSessions()
@@ -74,6 +79,7 @@ export function HistorySection() {
             setIsLoading(true)
             const data = await getSessions()
             setSessions(data || [])
+            setSelectedIds([]) // Reset selection on refresh
         } catch (err) {
             console.error("Failed to fetch sessions:", err)
             toast.error("Failed to load sessions")
@@ -99,12 +105,43 @@ export function HistorySection() {
         try {
             await deleteSession(id)
             setSessions(prev => prev.filter(s => s.id !== id))
+            setSelectedIds(prev => prev.filter(selectedId => selectedId !== id))
             toast.success("Session deleted")
         } catch (err) {
             console.error("Failed to delete session:", err)
             toast.error("Failed to delete session")
         } finally {
             setSessionToDelete(null)
+        }
+    }
+
+    const handleBulkDelete = async () => {
+        setIsBulkDeleting(true)
+        try {
+            await deleteSessions(selectedIds)
+            setSessions(prev => prev.filter(s => !selectedIds.includes(s.id)))
+            toast.success(`${selectedIds.length} sessions deleted`)
+            setSelectedIds([])
+        } catch (err) {
+            console.error("Failed to bulk delete:", err)
+            toast.error("Failed to delete sessions")
+        } finally {
+            setIsBulkDeleting(false)
+            setShowBulkDeleteConfirm(false)
+        }
+    }
+
+    const toggleSelection = (id: string) => {
+        setSelectedIds(prev => 
+            prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+        )
+    }
+
+    const toggleSelectAll = (filteredIds: string[]) => {
+        if (selectedIds.length === filteredIds.length && filteredIds.every(id => selectedIds.includes(id))) {
+            setSelectedIds([])
+        } else {
+            setSelectedIds(filteredIds)
         }
     }
 
@@ -155,6 +192,9 @@ export function HistorySection() {
         return matchesCategory && matchesDate
     })
 
+    const filteredIds = filteredSessions.map(s => s.id)
+    const isAllSelected = filteredIds.length > 0 && filteredIds.every(id => selectedIds.includes(id))
+
     const formatDate = (dateString: string) => {
         return format(new Date(dateString), "dd/MM/yyyy HH:mm")
     }
@@ -180,7 +220,25 @@ export function HistorySection() {
                             </div>
                         </div>
                         
-                        <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+                        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                            {selectedIds.length > 0 && (
+                                <div className="flex items-center gap-2 animate-in fade-in slide-in-from-right-4 duration-300">
+                                    <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 bg-zinc-100 px-2 py-1 rounded-md border border-zinc-200">
+                                        {selectedIds.length} Selected
+                                    </span>
+                                    <Button 
+                                        variant="destructive" 
+                                        size="sm" 
+                                        className="h-9 px-4 text-xs font-bold shadow-sm hover:shadow-md transition-all active:scale-95"
+                                        onClick={() => setShowBulkDeleteConfirm(true)}
+                                    >
+                                        <Trash2 className="w-3.5 h-3.5 mr-2" />
+                                        Delete Sessions
+                                    </Button>
+                                    <div className="w-px h-6 bg-zinc-200 mx-1" />
+                                </div>
+                            )}
+
                             <Select
                                 value={filterDate}
                                 onValueChange={(val) => {
@@ -266,6 +324,14 @@ export function HistorySection() {
                             <Table>
                                 <TableHeader className="bg-zinc-50/50">
                                     <TableRow className="hover:bg-transparent">
+                                        <TableHead className="w-[40px]">
+                                            <input 
+                                                type="checkbox" 
+                                                className="rounded border-zinc-300 text-zinc-900 focus:ring-zinc-900"
+                                                checked={isAllSelected}
+                                                onChange={() => toggleSelectAll(filteredIds)}
+                                            />
+                                        </TableHead>
                                         <TableHead className="w-[160px] text-xs font-bold uppercase tracking-wider text-zinc-500">Date</TableHead>
                                         <TableHead className="text-xs font-bold uppercase tracking-wider text-zinc-500">Category</TableHead>
                                         <TableHead className="w-[120px] text-xs font-bold uppercase tracking-wider text-zinc-500">Duration</TableHead>
@@ -278,7 +344,7 @@ export function HistorySection() {
                                 <TableBody>
                                     {filteredSessions.length === 0 ? (
                                         <TableRow>
-                                            <TableCell colSpan={7} className="text-center text-zinc-400 py-20 font-medium italic">
+                                            <TableCell colSpan={8} className="text-center text-zinc-400 py-20 font-medium italic">
                                                 No productivity sessions found for the current filters.
                                             </TableCell>
                                         </TableRow>
@@ -288,9 +354,21 @@ export function HistorySection() {
                                             const targetSeconds = hasTarget ? session.Category!.target_time! : 0
                                             const difference = session.duration - targetSeconds
                                             const isEditing = editingId === session.id
+                                            const isSelected = selectedIds.includes(session.id)
 
                                             return (
-                                                <TableRow key={session.id} className="hover:bg-zinc-50/30 transition-colors group">
+                                                <TableRow key={session.id} className={cn(
+                                                    "hover:bg-zinc-50/30 transition-colors group",
+                                                    isSelected && "bg-blue-50/30 hover:bg-blue-50/50"
+                                                )}>
+                                                    <TableCell>
+                                                        <input 
+                                                            type="checkbox" 
+                                                            className="rounded border-zinc-300 text-zinc-900 focus:ring-zinc-900"
+                                                            checked={isSelected}
+                                                            onChange={() => toggleSelection(session.id)}
+                                                        />
+                                                    </TableCell>
                                                     <TableCell className="font-medium text-zinc-600">
                                                         {formatDate(session.created_at)}
                                                     </TableCell>
@@ -407,9 +485,31 @@ export function HistorySection() {
                         <AlertDialogCancel className="border-zinc-200">Cancel</AlertDialogCancel>
                         <AlertDialogAction 
                             onClick={() => sessionToDelete && handleDelete(sessionToDelete.id)}
-                            className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+                            className="bg-red-600 hover:bg-red-700 focus:ring-red-600 text-white"
                         >
                             Delete Session
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            <AlertDialog open={showBulkDeleteConfirm} onOpenChange={setShowBulkDeleteConfirm}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Delete Multiple Sessions?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            You are about to delete <span className="font-bold text-red-600">{selectedIds.length}</span> sessions. This action is permanent and cannot be undone.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel className="border-zinc-200">Cancel</AlertDialogCancel>
+                        <AlertDialogAction 
+                            onClick={handleBulkDelete}
+                            disabled={isBulkDeleting}
+                            className="bg-red-600 hover:bg-red-700 focus:ring-red-600 text-white"
+                        >
+                            {isBulkDeleting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                            Delete All Selected
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

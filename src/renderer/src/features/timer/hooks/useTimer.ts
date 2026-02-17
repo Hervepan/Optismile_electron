@@ -76,5 +76,9 @@ export function useTimer(initialTime: number = 0): UseTimerReturn {
     return hours > 0 ? `${hours}:${m}:${s}` : `${m}:${s}`;
   }, []);
 
+  useEffect(() => {
+    window.api.timer.updateStatus(isRunning);
+  }, [isRunning]);
+
   return { seconds, isRunning, start, pause, stop, formatTime };
 }

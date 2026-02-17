@@ -39,6 +39,13 @@ you can always refer to the "chrome_extension_version" directory when trying to 
 - **Session History:** Completed with chronological sorting, filtering (Date/Category), inline editing, and deletion.
 - **Statistics Dashboard:** Faithfully ported from extension with Recharts (Bar/Line), Std Dev consistency metrics, and Success Rate tracking.
 - **Window Management:** Dual-window "Pro" flow (PIP Timer -> Centered Save Window) with native resizing handles restored, 0-duration guards, and cross-window state blocking.
+- **Deletion Protocol:**
+    - **Categories:** Implemented a "Safety Lock" (pre-deletion check) preventing removal if sessions exist.
+    - **Sessions:** Bulk deletion via multi-select checkboxes in History.
+
+## 🧠 Collaboration Protocol
+
+- **Critical Review Mandate:** For every feature request or suggestion, the Agent MUST provide a cold, honest, production-level critique. The Agent will challenge sub-optimal patterns and propose industry-standard alternatives before implementation.
 
 ## 🚀 Next Steps
 

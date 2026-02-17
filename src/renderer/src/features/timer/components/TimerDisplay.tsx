@@ -1,7 +1,7 @@
-import { useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button'
 import { useTimer } from '@/features/timer/hooks/useTimer'
-import { Play, Pause, Square, AlertTriangle } from 'lucide-react'
+import { Play, Pause, Square, AlertTriangle, Bell, X as CloseIcon } from 'lucide-react'
 
 interface TimerProps {
     onFinish: (duration: number) => void;
@@ -10,9 +10,41 @@ interface TimerProps {
 
 export function TimerDisplay({ onFinish, isAuthenticated }: TimerProps) {
     const { seconds, isRunning, start, pause, stop, formatTime } = useTimer();
+    const [nudgeType, setNudgeType] = useState<string | null>(() => {
+        const params = new URLSearchParams(window.location.search);
+        return params.get('nudge');
+    });
+    const [nudgeCountdown, setNudgeCountdown] = useState<number | null>(null);
     const hasStarted = seconds > 0;
-    
-    // Use refs to ensure the event listener always has access to the latest functions
+
+    // Fetch nudge duration on mount
+    useEffect(() => {
+        if (nudgeType) {
+            window.api.settings.getNudgeDuration().then((mins: number) => {
+                setNudgeCountdown(mins * 60);
+            });
+        }
+    }, [nudgeType]);
+
+    // Live countdown logic
+    useEffect(() => {
+        if (nudgeCountdown !== null && nudgeCountdown > 0) {
+            const timer = setTimeout(() => setNudgeCountdown(nudgeCountdown - 1), 1000);
+            return () => clearTimeout(timer);
+        } else if (nudgeCountdown === 0) {
+            setNudgeType(null);
+            setNudgeCountdown(null);
+        }
+        return undefined;
+    }, [nudgeCountdown]);
+
+    const formatCountdown = (totalSeconds: number) => {
+        const mins = Math.floor(totalSeconds / 60);
+        const secs = totalSeconds % 60;
+        return `${mins}:${secs.toString().padStart(2, '0')}`;
+    }
+
+    // --- STOP LOGIC ---
     const stopRef = useRef(stop);
     const onFinishRef = useRef(onFinish);
 
@@ -32,24 +64,83 @@ export function TimerDisplay({ onFinish, isAuthenticated }: TimerProps) {
         handleStopRef.current = handleStop;
     }, [handleStop]);
 
+    // Handle initial start only if not nudging
     useEffect(() => { 
-        start() 
-    }, [start])
+        if (!nudgeType) start();
+    }, [start, nudgeType]);
+
+    // --- NUDGE LOGIC ---
+    useEffect(() => {
+        const removeNudgeListener = window.api.timer.onNudge((type: string) => {
+            if (!isRunning && seconds === 0) {
+                setNudgeType(type);
+                window.api.settings.getNudgeDuration().then((mins: number) => {
+                    setNudgeCountdown(mins * 60);
+                });
+            }
+        });
+
+        return () => removeNudgeListener();
+    }, [isRunning, seconds]);
+
+    const handleStartFromNudge = () => {
+        setNudgeType(null);
+        setNudgeCountdown(null);
+        start();
+    }
 
     // --- PRO EVENT LISTENER ---
     // Instead of hacky props, we listen to the bridge event directly
     useEffect(() => {
         const removeListener = window.api.auth.onShortcutPressed(() => {
-            console.log("Timer stop triggered via global shortcut");
-            handleStopRef.current();
+            console.log("Global shortcut pressed - current state:", { isRunning, isNudging: !!nudgeType });
+            
+            if (nudgeType) {
+                // If we are nudging, the shortcut should START the timer
+                handleStartFromNudge();
+            } else if (isRunning) {
+                // If running, it should STOP
+                handleStopRef.current();
+            } else {
+                // If idle (not nudging, not running), just start
+                start();
+            }
         });
 
         return () => removeListener();
-    }, []); 
+    }, [isRunning, nudgeType, start]); 
 
+    if (nudgeType) {
+        return (
+            <div className="flex flex-col h-full bg-white text-zinc-900 overflow-hidden font-sans border-2 border-lime-400">
+                <div className="flex-1 flex flex-col items-center justify-center p-4 text-center gap-3">
+                    <div className="bg-lime-100 p-2 rounded-full">
+                        <Bell className="w-5 h-5 text-lime-600 animate-bounce" />
+                    </div>
+                    <div>
+                        <h3 className="font-bold text-sm text-zinc-900">
+                            {nudgeType === 'ready-for-next' ? 'Ready for next patient?' : 'Start a new session?'}
+                        </h3>
+                        {nudgeCountdown !== null && (
+                            <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest mt-1">
+                                Closing in {formatCountdown(nudgeCountdown)}
+                            </p>
+                        )}
+                    </div>
+                </div>
+                <footer className="p-3 bg-zinc-50 border-t border-zinc-100">
+                    <Button 
+                        onClick={handleStartFromNudge}
+                        className="w-full h-11 bg-lime-400 text-lime-950 font-bold text-sm hover:bg-lime-500 shadow-sm transition-all active:scale-[0.98]"
+                    >
+                        START NEXT SESSION
+                    </Button>
+                </footer>
+            </div>
+        )
+    }
     return (
         <div className="flex flex-col h-full bg-white text-zinc-900 overflow-hidden font-sans">
-
             {!isAuthenticated && (
                 <div className="flex items-center gap-2 bg-yellow-100 border-b border-yellow-200 text-yellow-800 text-xs text-center p-2 uppercase font-bold tracking-tight">
                     <AlertTriangle className="w-4 h-4" />

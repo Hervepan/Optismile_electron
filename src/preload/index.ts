@@ -5,6 +5,8 @@ contextBridge.exposeInMainWorld("api", {
   settings: {
     getShortcut: () => ipcRenderer.invoke("get-shortcut"),
     updateShortcut: (newShortcut: string) => ipcRenderer.invoke("update-shortcut", newShortcut),
+    getNudgeDuration: () => ipcRenderer.invoke("get-nudge-duration"),
+    updateNudgeDuration: (duration: number) => ipcRenderer.invoke("update-nudge-duration", duration),
   },
   auth: {
     openExternal: (url: string) =>
@@ -27,6 +29,12 @@ contextBridge.exposeInMainWorld("api", {
   },
   timer: {
     finish: (duration: number) => ipcRenderer.send("timer-finished", duration),
+    updateStatus: (isRunning: boolean) => ipcRenderer.send("timer-status-change", isRunning),
+    onNudge: (callback: (type: string) => void) => {
+      const subscription = (_event: any, type: string) => callback(type);
+      ipcRenderer.on("show-nudge", subscription);
+      return () => ipcRenderer.removeListener("show-nudge", subscription);
+    }
   },
   session: {
     saved: () => ipcRenderer.send("session-saved"),

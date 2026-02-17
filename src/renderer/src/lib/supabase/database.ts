@@ -105,6 +105,16 @@ export const deleteCategory = async (id: string) => {
   if (error) throw error;
 };
 
+export const countSessionsByCategory = async (categoryId: string): Promise<number> => {
+    const { count, error } = await supabase
+        .from("Sessions")
+        .select("*", { count: 'exact', head: true })
+        .eq("category_id", categoryId);
+    
+    if (error) throw error;
+    return count || 0;
+};
+
 export const saveSession = async (
   duration: number,
   categoryId: string,
@@ -156,4 +166,13 @@ export const updateSessionComment = async (id: string, comment: string) => {
 export const deleteSession = async (id: string) => {
   const { error } = await supabase.from("Sessions").delete().eq("id", id);
   if (error) throw error;
+};
+
+export const deleteSessions = async (ids: string[]) => {
+    const { error } = await supabase
+        .from("Sessions")
+        .delete()
+        .in("id", ids);
+    
+    if (error) throw error;
 };

@@ -51,19 +51,21 @@ export class WindowManager {
     return mainWindow;
   }
 
-  createSecondaryWindow(mode: WindowMode, duration?: number) {
+  createSecondaryWindow(mode: WindowMode, duration?: number, nudge?: string) {
     const isPip = mode === 'pip';
     
     // Pro Navigation Guard: 
     // 1. Focus existing window of the same mode
     const existingSame = isPip ? this.activePipWindow : this.activeSaveWindow;
     if (existingSame && !existingSame.isDestroyed()) {
+      if (nudge) existingSame.webContents.send("show-nudge", nudge);
       existingSame.focus();
       return existingSame;
     }
 
     // 2. Cross-mode Guard: Don't allow a new Timer if a Save window is still open
-    if (isPip && this.activeSaveWindow && !this.activeSaveWindow.isDestroyed()) {
+    // CRITICAL: We bypass this if a nudge is requested (transition state)
+    if (isPip && !nudge && this.activeSaveWindow && !this.activeSaveWindow.isDestroyed()) {
       this.activeSaveWindow.focus();
       return this.activeSaveWindow;
     }
@@ -72,8 +74,8 @@ export class WindowManager {
     const configKey = isPip ? 'pipBounds' : 'saveBounds';
     const savedBounds = config[configKey];
 
-    const width = savedBounds?.width ?? (isPip ? 400 : 650);
-    const height = savedBounds?.height ?? (isPip ? 120 : 650);
+    const width = savedBounds?.width ?? (isPip ? 340 : 650);
+    const height = savedBounds?.height ?? (isPip ? 180 : 650);
 
     const activeDisplay = screen.getDisplayNearestPoint(screen.getCursorScreenPoint());
     const { x: dx, y: dy, width: dw, height: dh } = activeDisplay.workArea;
@@ -117,12 +119,14 @@ export class WindowManager {
 
     const rendererUrl = process.env["ELECTRON_RENDERER_URL"];
     const durationParam = duration !== undefined ? `&duration=${duration}` : '';
+    const nudgeParam = nudge ? `&nudge=${nudge}` : '';
+    const queryParams = `?mode=${mode}${durationParam}${nudgeParam}`;
     
     if (is.dev && rendererUrl) {
-      win.loadURL(`${rendererUrl}?mode=${mode}${durationParam}`);
+      win.loadURL(`${rendererUrl}${queryParams}`);
     } else {
       const indexPath = join(__dirname, "../renderer/index.html");
-      win.loadURL(`file://${indexPath}?mode=${mode}${durationParam}`);
+      win.loadURL(`file://${indexPath}${queryParams}`);
     }
 
     if (isPip) {

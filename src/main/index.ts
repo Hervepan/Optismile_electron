@@ -3,6 +3,7 @@ import { join } from "path";
 import { getConfig, saveConfig } from "@main/config";
 import { windowManager } from "@main/windows";
 import { trayManager } from "@main/tray";
+import { activityManager } from "@main/activity";
 
 // --- IPC Handlers ---
 
@@ -19,11 +20,8 @@ ipcMain.on("timer-finished", (_event, duration: number) => {
   windowManager.createSecondaryWindow('save', duration);
 });
 
-ipcMain.on("session-saved", () => {
-  if (windowManager.activeSaveWindow && !windowManager.activeSaveWindow.isDestroyed()) {
-    windowManager.activeSaveWindow.close();
-  }
-});
+// ActivityManager now handles "session-saved" and "timer-status-change"
+activityManager.init();
 
 ipcMain.handle("update-shortcut", (_event, newShortcut: string) => {
   const success = registerPipShortcut(newShortcut);
@@ -32,6 +30,13 @@ ipcMain.handle("update-shortcut", (_event, newShortcut: string) => {
 });
 
 ipcMain.handle("get-shortcut", () => getConfig().shortcut);
+
+ipcMain.handle("get-nudge-duration", () => getConfig().nudgeDuration);
+
+ipcMain.handle("update-nudge-duration", (_event, duration: number) => {
+  saveConfig({ nudgeDuration: duration });
+  return true;
+});
 
 function registerPipShortcut(shortcut: string) {
   globalShortcut.unregisterAll();

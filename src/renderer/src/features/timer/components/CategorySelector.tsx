@@ -187,9 +187,16 @@ export function CategorySelector({ duration, onSaved, isAuthenticated }: any) {
                 </Button>
                 <Button 
                     onClick={handleSaveSession} disabled={!selectedCategory || loading}
-                    className="flex-[2] h-12 bg-zinc-900 text-white rounded-md font-bold tracking-wide hover:bg-zinc-800 transition-all active:scale-[0.98] shadow-sm disabled:opacity-50 no-drag"
+                    className="flex-[2] h-12 bg-zinc-900 text-white rounded-md font-bold tracking-wide hover:bg-zinc-800 transition-all active:scale-[0.98] shadow-sm disabled:opacity-50 no-drag flex flex-row items-center justify-center gap-2"
                 >
-                    {loading ? <Loader2 size={20} className="animate-spin mx-auto" /> : 'SAVE SESSION'}
+                    {loading ? (
+                        <Loader2 size={20} className="animate-spin mx-auto" />
+                    ) : (
+                        <>
+                            <span>SAVE SESSION</span>
+                            <span className="text-[10px] font-medium opacity-40 uppercase tracking-widest hidden sm:inline">Shift + Enter</span>
+                        </>
+                    )}
                 </Button>
             </footer>
         </div>

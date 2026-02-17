@@ -4,6 +4,7 @@ import fs from "fs";
 
 export interface AppConfig {
   shortcut: string;
+  nudgeDuration: number; // in minutes
   pipBounds?: Rectangle;
   saveBounds?: Rectangle;
 }
@@ -11,7 +12,10 @@ export interface AppConfig {
 const CONFIG_PATH = join(app.getPath("userData"), "config.json");
 
 export function getConfig(): AppConfig {
-  const defaultConfig: AppConfig = { shortcut: "Alt+J" };
+  const defaultConfig: AppConfig = { 
+    shortcut: "Alt+J",
+    nudgeDuration: 5
+  };
   try {
     if (fs.existsSync(CONFIG_PATH)) {
       const data = fs.readFileSync(CONFIG_PATH, "utf-8");
