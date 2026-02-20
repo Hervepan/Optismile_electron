@@ -51,9 +51,13 @@ import type { DateRange } from "react-day-picker"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 
-export function HistorySection() {
-    const [sessions, setSessions] = useState<Session[]>([])
-    const [isLoading, setIsLoading] = useState(true)
+interface HistorySectionProps {
+    sessions: Session[];
+    isLoading: boolean;
+    onRefresh: () => void;
+}
+
+export function HistorySection({ sessions, isLoading, onRefresh }: HistorySectionProps) {
     const [filterCategory, setFilterCategory] = useState("all")
     const [filterDate, setFilterDate] = useState("all")
     const [dateRange, setDateRange] = useState<DateRange | undefined>()
@@ -70,31 +74,12 @@ export function HistorySection() {
     const [isBulkDeleting, setIsBulkDeleting] = useState(false)
     const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false)
 
-    useEffect(() => {
-        fetchSessions()
-    }, [])
-
-    const fetchSessions = async () => {
-        try {
-            setIsLoading(true)
-            const data = await getSessions()
-            setSessions(data || [])
-            setSelectedIds([]) // Reset selection on refresh
-        } catch (err) {
-            console.error("Failed to fetch sessions:", err)
-            toast.error("Failed to load sessions")
-        } finally {
-            setIsLoading(false)
-        }
-    }
-
     const handleUpdateComment = async (id: string) => {
         try {
             await updateSessionComment(id, editingComment)
             setEditingId(null)
             toast.success("Comment updated")
-            // Optimistic update or refetch
-            setSessions(prev => prev.map(s => s.id === id ? { ...s, comment: editingComment } : s))
+            onRefresh();
         } catch (err) {
             console.error("Failed to update comment:", err)
             toast.error("Failed to update comment")
@@ -104,9 +89,9 @@ export function HistorySection() {
     const handleDelete = async (id: string) => {
         try {
             await deleteSession(id)
-            setSessions(prev => prev.filter(s => s.id !== id))
             setSelectedIds(prev => prev.filter(selectedId => selectedId !== id))
             toast.success("Session deleted")
+            onRefresh();
         } catch (err) {
             console.error("Failed to delete session:", err)
             toast.error("Failed to delete session")
@@ -119,9 +104,9 @@ export function HistorySection() {
         setIsBulkDeleting(true)
         try {
             await deleteSessions(selectedIds)
-            setSessions(prev => prev.filter(s => !selectedIds.includes(s.id)))
             toast.success(`${selectedIds.length} sessions deleted`)
             setSelectedIds([])
+            onRefresh();
         } catch (err) {
             console.error("Failed to bulk delete:", err)
             toast.error("Failed to delete sessions")

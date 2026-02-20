@@ -4,6 +4,7 @@ import { CategoryManager } from '@/features/dashboard/components/CategoryManager
 import { HistorySection } from '@/features/dashboard/components/HistorySection'
 import { StatisticsSection } from '@/features/dashboard/components/stats/StatisticsSection'
 import { SettingsSection } from '@/features/dashboard/components/SettingsSection'
+import { useSessionsFetch } from '@/features/dashboard/hooks/useSessionsFetch'
 import { User } from '@supabase/supabase-js'
 import { 
     Tabs, 
@@ -16,12 +17,16 @@ import {
     History, 
     BarChart3, 
     LogOut,
-    Settings2
+    Settings2,
+    Loader2
 } from 'lucide-react'
 
 export function DashboardPage({ user }: { user: User }) {
     // Initialize tab from localStorage, default to 'activities'
     const [activeTab, setActiveTab] = useState(() => localStorage.getItem('optismile_dashboard_tab') || 'activities')
+    
+    // Centralized session data for the entire dashboard
+    const { sessions, isLoading, refetch } = useSessionsFetch()
 
     const handleTabChange = (value: string) => {
         setActiveTab(value)
@@ -72,6 +77,7 @@ export function DashboardPage({ user }: { user: User }) {
                         </div>
 
                         <div className="flex items-center gap-4">
+                            {isLoading && <Loader2 className="w-4 h-4 animate-spin text-zinc-300" />}
                             <div className="flex items-center gap-2 py-1 px-3 bg-zinc-50 rounded-full border border-zinc-100">
                                 <div className="h-6 w-6 rounded-full bg-white border border-zinc-200 flex items-center justify-center">
                                     <div className="text-[10px] font-bold text-zinc-400 uppercase">{user.email?.[0]}</div>
@@ -97,11 +103,11 @@ export function DashboardPage({ user }: { user: User }) {
                     </TabsContent>
                     
                     <TabsContent value="history" className="mt-0 focus-visible:ring-0 focus-visible:ring-offset-0">
-                        <HistorySection />
+                        <HistorySection sessions={sessions} isLoading={isLoading} onRefresh={refetch} />
                     </TabsContent>
 
                     <TabsContent value="statistics" className="mt-0 focus-visible:ring-0 focus-visible:ring-offset-0">
-                        <StatisticsSection />
+                        <StatisticsSection sessions={sessions} isLoading={isLoading} />
                     </TabsContent>
 
                     <TabsContent value="settings" className="mt-0 focus-visible:ring-0 focus-visible:ring-offset-0">

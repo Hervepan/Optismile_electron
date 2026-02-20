@@ -1,14 +1,17 @@
-import { useSessionsFetch } from "@/features/dashboard/hooks/useSessionsFetch"
 import { useStatistics } from "@/features/dashboard/hooks/useStatistics"
 import { StatsHeader } from "./StatsHeader"
 import { MetricsGrid } from "./MetricsGrid"
 import { CategoryLeaderboard } from "./CategoryLeaderboard"
 import { PerformanceCharts } from "./PerformanceCharts"
 import { Skeleton } from "@/components/ui/skeleton"
+import { type Session } from "@lib/supabase/database"
 
-export function StatisticsSection() {
-    const { sessions, isLoading: isFetching } = useSessionsFetch()
-    
+interface StatisticsSectionProps {
+    sessions: Session[];
+    isLoading: boolean;
+}
+
+export function StatisticsSection({ sessions, isLoading }: StatisticsSectionProps) {
     const {
         isGlobal,
         selectedCategory,
@@ -23,7 +26,7 @@ export function StatisticsSection() {
         singleCategoryData
     } = useStatistics({ rawSessions: sessions })
 
-    if (isFetching) {
+    if (isLoading) {
         return <StatisticsSkeleton />
     }
 
