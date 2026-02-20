@@ -5,7 +5,18 @@ import { windowManager } from "@main/windows";
 import { trayManager } from "@main/tray";
 import { activityManager } from "@main/activity";
 
+let isQuitting = false;
+let pendingDeepLink: string | null = null;
+
+export const getIsQuitting = () => isQuitting;
+
 // --- IPC Handlers ---
+
+ipcMain.handle("get-pending-deeplink", () => {
+  const link = pendingDeepLink;
+  pendingDeepLink = null;
+  return link;
+});
 
 ipcMain.handle("reset-nudge-settings", () => {
   resetNudgeConfig();
@@ -97,12 +108,20 @@ function registerPipShortcut(config: { shortcut: string; camouflageShortcut: str
 
 function handleDeepLink(url: string) {
   const main = windowManager.getMainWindow();
-  if (main) {
+  if (main && !main.webContents.isLoading()) {
     if (main.isMinimized()) main.restore();
+    main.show();
     main.focus();
     main.webContents.send("deep-link", url);
+  } else {
+    // Buffer the link if the window isn't ready
+    pendingDeepLink = url;
   }
 }
+
+app.on("before-quit", () => {
+  isQuitting = true;
+});
 
 if (process.defaultApp) {
   if (process.argv.length >= 2) {

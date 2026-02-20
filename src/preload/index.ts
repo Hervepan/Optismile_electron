@@ -38,7 +38,8 @@ contextBridge.exposeInMainWorld("api", {
       return () => {
         ipcRenderer.removeListener("session-saved-success", subscription);
       };
-    }
+    },
+    getPendingDeepLink: () => ipcRenderer.invoke("get-pending-deeplink"),
   },
   timer: {
     finish: (duration: number) => ipcRenderer.send("timer-finished", duration),

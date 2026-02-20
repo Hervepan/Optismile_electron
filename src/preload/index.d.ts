@@ -16,6 +16,7 @@ export interface IElectronAPI {
     onCallback: (callback: (url: string) => void) => () => void;
     onShortcutPressed: (callback: () => void) => () => void;
     onSessionSaved: (callback: () => void) => () => void;
+    getPendingDeepLink: () => Promise<string | null>;
   };
   timer: {
     finish: (duration: number) => void;

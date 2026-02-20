@@ -3,6 +3,7 @@ import { join } from "path";
 import { is } from "@electron-toolkit/utils";
 import { getConfig, saveConfig } from "@main/config";
 import { debounce } from "@main/utils";
+import { getIsQuitting } from "@main/index";
 
 export type WindowMode = "pip" | "save";
 
@@ -30,9 +31,19 @@ export class WindowManager {
     });
 
     this.mainWindowId = mainWindow.id;
-    mainWindow.maximize();
 
-    mainWindow.once("ready-to-show", () => mainWindow.show());
+    mainWindow.once("ready-to-show", () => {
+      mainWindow.maximize();
+      mainWindow.show();
+    });
+
+    // Hide on Close behavior
+    mainWindow.on("close", (e) => {
+      if (!getIsQuitting()) {
+        e.preventDefault();
+        mainWindow.hide();
+      }
+    });
 
     mainWindow.webContents.setWindowOpenHandler((details) => {
       if (details.url.startsWith(this.ALLOWED_AUTH_DOMAIN)) {
@@ -126,9 +137,11 @@ export class WindowManager {
       win.loadURL(`${rendererUrl}${queryParams}`);
     } else {
       const indexPath = join(__dirname, "../renderer/index.html");
-      win.loadFile(indexPath, {
-        query: { mode, duration: duration?.toString(), nudge },
-      });
+      const query: Record<string, string> = { mode };
+      if (duration !== undefined) query.duration = duration.toString();
+      if (nudge !== undefined) query.nudge = nudge;
+
+      win.loadFile(indexPath, { query });
     }
 
     if (isPip) {
