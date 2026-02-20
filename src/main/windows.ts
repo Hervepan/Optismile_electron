@@ -2,8 +2,9 @@ import { BrowserWindow, screen, shell } from "electron";
 import { join } from "path";
 import { is } from "@electron-toolkit/utils";
 import { getConfig, saveConfig } from "@main/config";
+import { debounce } from "@main/utils";
 
-export type WindowMode = 'pip' | 'save';
+export type WindowMode = "pip" | "save";
 
 export class WindowManager {
   public mainWindowId: number | null = null;
@@ -14,9 +15,7 @@ export class WindowManager {
   private ALLOWED_AUTH_DOMAIN = process.env.VITE_SUPABASE_URL || "";
 
   createMainWindow() {
-    const iconPath = is.dev 
-      ? join(__dirname, "../../resources/icon.png") 
-      : join(__dirname, "../renderer/icons/optismile.png")
+    const iconPath = join(__dirname, "../../resources/icon.png");
 
     const mainWindow = new BrowserWindow({
       width: 1280,
@@ -52,10 +51,8 @@ export class WindowManager {
   }
 
   createSecondaryWindow(mode: WindowMode, duration?: number, nudge?: string) {
-    const isPip = mode === 'pip';
-    
-    // Pro Navigation Guard: 
-    // 1. Focus existing window of the same mode
+    const isPip = mode === "pip";
+
     const existingSame = isPip ? this.activePipWindow : this.activeSaveWindow;
     if (existingSame && !existingSame.isDestroyed()) {
       if (nudge) existingSame.webContents.send("show-nudge", nudge);
@@ -63,78 +60,83 @@ export class WindowManager {
       return existingSame;
     }
 
-    // 2. Cross-mode Guard: Don't allow a new Timer if a Save window is still open
-    // CRITICAL: We bypass this if a nudge is requested (transition state)
-    if (isPip && !nudge && this.activeSaveWindow && !this.activeSaveWindow.isDestroyed()) {
+    if (
+      isPip &&
+      !nudge &&
+      this.activeSaveWindow &&
+      !this.activeSaveWindow.isDestroyed()
+    ) {
       this.activeSaveWindow.focus();
       return this.activeSaveWindow;
     }
 
     const config = getConfig();
-    const configKey = isPip ? 'pipBounds' : 'saveBounds';
+    const configKey = isPip ? "pipBounds" : "saveBounds";
     const savedBounds = config[configKey];
 
-    const width = savedBounds?.width ?? (isPip ? 340 : 650);
-    const height = savedBounds?.height ?? (isPip ? 180 : 650);
+    const width = savedBounds?.width ?? (isPip ? 330 : 650);
+    const height = savedBounds?.height ?? (isPip ? 220 : 650);
 
     const activeDisplay = screen.getDisplayNearestPoint(screen.getCursorScreenPoint());
     const { x: dx, y: dy, width: dw, height: dh } = activeDisplay.workArea;
-    
-    const defaultX = isPip ? (dx + dw - width - 20) : (dx + (dw - width) / 2);
-    const defaultY = isPip ? (dy + dh - height - 20) : (dy + (dh - height) / 2);
+
+    const defaultX = isPip ? dx + dw - width - 20 : dx + (dw - width) / 2;
+    const defaultY = isPip ? dy + dh - height - 20 : dy + (dh - height) / 2;
+
+    const initialX = savedBounds ? savedBounds.x : Math.round(defaultX);
+    const initialY = savedBounds ? savedBounds.y : Math.round(defaultY);
 
     const win = new BrowserWindow({
-      x: savedBounds?.x ?? Math.round(defaultX),
-      y: savedBounds?.y ?? Math.round(defaultY),
+      x: initialX,
+      y: initialY,
       width,
       height,
       show: false,
       frame: false,
       transparent: false,
       resizable: true,
-      alwaysOnTop: isPip,
+      alwaysOnTop: true,
       hasShadow: true,
       thickFrame: true,
       backgroundColor: "#ffffff",
-      webPreferences: { 
-        preload: this.preloadPath, 
-        sandbox: false 
+      webPreferences: {
+        preload: this.preloadPath,
+        sandbox: false,
       },
     });
 
     win.setMinimumSize(200, isPip ? 80 : 450);
+    win.once("ready-to-show", () => win.show());
 
-    win.once("ready-to-show", () => {
-      win.show();
-      if (isPip) win.setAlwaysOnTop(true, "screen-saver");
-    });
-
-    const saveBounds = () => {
+    const debouncedSaveBounds = debounce(() => {
       if (!win.isDestroyed()) {
         saveConfig({ [configKey]: win.getBounds() });
       }
-    };
-    win.on("moved", saveBounds);
-    win.on("resized", saveBounds);
+    }, 500);
+
+    win.on("moved", debouncedSaveBounds);
+    win.on("resized", debouncedSaveBounds);
 
     const rendererUrl = process.env["ELECTRON_RENDERER_URL"];
-    const durationParam = duration !== undefined ? `&duration=${duration}` : '';
-    const nudgeParam = nudge ? `&nudge=${nudge}` : '';
+    const durationParam = duration !== undefined ? `&duration=${duration}` : "";
+    const nudgeParam = nudge ? `&nudge=${nudge}` : "";
     const queryParams = `?mode=${mode}${durationParam}${nudgeParam}`;
-    
+
     if (is.dev && rendererUrl) {
       win.loadURL(`${rendererUrl}${queryParams}`);
     } else {
       const indexPath = join(__dirname, "../renderer/index.html");
-      win.loadURL(`file://${indexPath}${queryParams}`);
+      win.loadFile(indexPath, {
+        query: { mode, duration: duration?.toString(), nudge },
+      });
     }
 
     if (isPip) {
-        this.activePipWindow = win;
-        win.on("closed", () => { this.activePipWindow = null; });
+      this.activePipWindow = win;
+      win.on("closed", () => { this.activePipWindow = null; });
     } else {
-        this.activeSaveWindow = win;
-        win.on("closed", () => { this.activeSaveWindow = null; });
+      this.activeSaveWindow = win;
+      win.on("closed", () => { this.activeSaveWindow = null; });
     }
 
     return win;

@@ -58,16 +58,15 @@ export default function App() {
         }
     }
 
-    if (loading) return <div className="flex h-screen items-center justify-center text-lg font-black text-zinc-300 tracking-tighter uppercase font-sans">OptiSmile...</div>
+    const renderContent = () => {
+        if (loading) return <div className="flex h-screen items-center justify-center text-lg font-black text-zinc-300 tracking-tighter uppercase font-sans">OptiSmile...</div>
 
-    if (mode === 'pip') return <TimerPage user={user} />
-    if (mode === 'save') return <SaveSessionPage user={user} />
+        if (mode === 'pip') return <TimerPage user={user} />
+        if (mode === 'save') return <SaveSessionPage user={user} />
 
-    if (user) return <DashboardPage user={user} />
+        if (user) return <DashboardPage user={user} />
 
-    return (
-        <>
-            <Toaster position="bottom-right" richColors closeButton />
+        return (
             <AuthSection
                 isSignUp={isSignUp}
                 setIsSignUp={setIsSignUp}
@@ -78,6 +77,13 @@ export default function App() {
                 error={error}
                 handleAuth={handleAuth}
             />
+        )
+    }
+
+    return (
+        <>
+            <Toaster position="bottom-right" richColors closeButton />
+            {renderContent()}
         </>
     )
 }

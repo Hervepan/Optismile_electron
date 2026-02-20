@@ -1,7 +1,8 @@
-import { Pencil, Trash2, Check, X, Loader2, FolderPlus, Keyboard, Timer, Bell } from 'lucide-react'
+import { Pencil, Trash2, Check, X, Loader2, FolderPlus } from 'lucide-react'
 import { Button } from "../../../components/ui/button"
 import { Input } from "../../../components/ui/input"
 import { toast } from 'sonner'
+import { TimeInput } from "@/components/ui/time-input"
 import {
     AlertDialog,
     AlertDialogAction,
@@ -23,85 +24,28 @@ import {
     getCategories,
     deleteCategory,
     updateCategory,
-    formatSecondsToHuman,
-    parseHumanToSeconds,
     countSessionsByCategory,
     type Category
 } from "@lib/supabase/database"
+import { formatSecondsToHuman } from "@lib/time"
 import { CategoryCreator } from "./CategoryCreator"
 import { useState, useEffect } from "react";
 
 export function CategoryManager() {
     const [categories, setCategories] = useState<Category[]>([])
     const [isLoading, setIsLoading] = useState(true)
-    const [shortcut, setShortcut] = useState<string>("Alt+J")
-    const [newShortcut, setNewShortcut] = useState("")
-    const [nudgeDuration, setNudgeDuration] = useState<number>(5)
-    const [newNudgeDuration, setNewNudgeDuration] = useState<string>("")
 
     // Edit state
     const [editingId, setEditingId] = useState<string | null>(null)
     const [editingName, setEditingName] = useState("")
-    const [editingTarget, setEditingTarget] = useState("")
+    const [editingTargetSeconds, setEditingTargetSeconds] = useState<number>(0)
     const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null)
     const [associatedSessionsCount, setAssociatedSessionsCount] = useState<number>(0)
     const [isCheckingSessions, setIsCheckingSessions] = useState(false)
 
     useEffect(() => {
         fetchCategories()
-        fetchShortcut()
-        fetchNudgeDuration()
     }, [])
-
-    const fetchShortcut = () => {
-        window.api.settings.getShortcut().then((s: string) => {
-            if (s) setShortcut(s)
-        })
-    }
-
-    const fetchNudgeDuration = () => {
-        window.api.settings.getNudgeDuration().then((d: number) => {
-            if (d) setNudgeDuration(d)
-        })
-    }
-
-    const formatShortcutDisplay = (s: string) => {
-        if (!s) return "";
-        return s.split('+').map(part => {
-            if (part.length === 1) return part.toUpperCase();
-            return part.charAt(0).toUpperCase() + part.slice(1);
-        }).join('+');
-    }
-
-    const handleUpdateShortcut = async (e: React.FormEvent) => {
-        e.preventDefault()
-        if (!newShortcut.trim()) return
-
-        const success = await window.api.settings.updateShortcut(newShortcut)
-        if (success) {
-            setShortcut(newShortcut)
-            setNewShortcut('')
-            toast.success("Shortcut updated successfully")
-        } else {
-            toast.error("Invalid shortcut format")
-        }
-    }
-
-    const handleUpdateNudgeDuration = async (e: React.FormEvent) => {
-        e.preventDefault()
-        const val = parseInt(newNudgeDuration)
-        if (isNaN(val) || val < 1 || val > 60) {
-            toast.error("Duration must be between 1 and 60 minutes")
-            return
-        }
-
-        const success = await window.api.settings.updateNudgeDuration(val)
-        if (success) {
-            setNudgeDuration(val)
-            setNewNudgeDuration('')
-            toast.success("Nudge duration updated")
-        }
-    }
 
     const fetchCategories = async () => {
         try {
@@ -152,8 +96,7 @@ export function CategoryManager() {
 
     const handleUpdate = async (id: string) => {
         try {
-            const targetSeconds = editingTarget.trim() ? parseHumanToSeconds(editingTarget) : null
-            await updateCategory(id, editingName, targetSeconds)
+            await updateCategory(id, editingName, editingTargetSeconds > 0 ? editingTargetSeconds : null)
             toast.success("Category updated")
             setEditingId(null)
             fetchCategories()
@@ -167,65 +110,6 @@ export function CategoryManager() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-1 space-y-6">
                 <CategoryCreator onSubmit={handleCreate} />
-
-                <Card className="border-zinc-200 shadow-none bg-white">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Global Shortcut</CardTitle>
-                        <Keyboard className="h-4 w-4 text-zinc-400" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold mb-4">{formatShortcutDisplay(shortcut)}</div>
-                        <p className="text-xs text-zinc-500 mb-4">Launch acquisition session</p>
-
-                        <form onSubmit={handleUpdateShortcut} className="space-y-3">
-                            <Input
-                                placeholder="e.g. Alt+J"
-                                value={newShortcut}
-                                onChange={(e) => setNewShortcut(e.target.value)}
-                                className="h-9 text-sm border-zinc-200"
-                            />
-                            <Button
-                                type="submit"
-                                variant="outline"
-                                size="sm"
-                                className="w-full text-xs h-8"
-                            >
-                                <Keyboard className="w-3 h-3 mr-2" />
-                                Update
-                            </Button>
-                        </form>
-                    </CardContent>
-                </Card>
-
-                <Card className="border-zinc-200 shadow-none bg-white">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Reminder Nudge</CardTitle>
-                        <Bell className="h-4 w-4 text-zinc-400" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold mb-4">{nudgeDuration}m</div>
-                        <p className="text-xs text-zinc-500 mb-4">Auto-dismiss timeout for reminders</p>
-
-                        <form onSubmit={handleUpdateNudgeDuration} className="space-y-3">
-                            <Input
-                                type="number"
-                                placeholder="Minutes (1-60)"
-                                value={newNudgeDuration}
-                                onChange={(e) => setNewNudgeDuration(e.target.value)}
-                                className="h-9 text-sm border-zinc-200"
-                            />
-                            <Button
-                                type="submit"
-                                variant="outline"
-                                size="sm"
-                                className="w-full text-xs h-8"
-                            >
-                                <Timer className="w-3 h-3 mr-2" />
-                                Update Duration
-                            </Button>
-                        </form>
-                    </CardContent>
-                </Card>
             </div>
 
             <div className="lg:col-span-2">
@@ -237,45 +121,34 @@ export function CategoryManager() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {categories.length > 0 ? (
                             categories.map((cat) => {
-                                const editingTargetSeconds = editingId === cat.id && editingTarget.trim()
-                                    ? parseHumanToSeconds(editingTarget)
-                                    : null;
-
                                 return (
                                     <Card key={cat.id} className="border-zinc-200 shadow-none bg-white transition-all hover:border-blue-300 hover:shadow-sm group">
                                         {editingId === cat.id ? (
                                             <div className="p-4 flex flex-col gap-3">
                                                 <div className="flex flex-col gap-2">
-                                                    <label className="text-xs font-medium text-zinc-500">Name</label>
+                                                    <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Name</label>
                                                     <Input
                                                         value={editingName}
                                                         onChange={(e) => setEditingName(e.target.value)}
-                                                        className="h-8 text-sm"
+                                                        className="h-9 text-sm font-bold border-zinc-200 focus-visible:ring-zinc-900"
                                                         autoFocus
                                                     />
                                                 </div>
-                                                <div className="flex flex-col gap-2">
-                                                    <label className="text-xs font-medium text-zinc-500">Target Time</label>
-                                                    <Input
-                                                        value={editingTarget}
-                                                        onChange={(e) => setEditingTarget(e.target.value)}
-                                                        className="h-8 text-sm"
-                                                        placeholder="e.g. 25m"
-                                                    />
-                                                    {editingTargetSeconds !== null && editingTargetSeconds > 0 && (
-                                                        <div className="flex justify-end">
-                                                            <span className="text-[10px] font-bold text-zinc-500 bg-zinc-100 px-1.5 py-0.5 rounded-sm tracking-tight">
-                                                                {formatSecondsToHuman(editingTargetSeconds)}
-                                                            </span>
-                                                        </div>
-                                                    )}
-                                                </div>
+                                                
+                                                <TimeInput 
+                                                    label="Target Time"
+                                                    value={editingTargetSeconds}
+                                                    onChange={setEditingTargetSeconds}
+                                                    placeholder="e.g. 25m"
+                                                    id={`edit-target-${cat.id}`}
+                                                />
+
                                                 <div className="flex justify-end gap-2 mt-2">
-                                                    <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => setEditingId(null)}>
-                                                        <X className="h-4 w-4" />
+                                                    <Button size="sm" variant="ghost" className="h-8 font-bold text-xs uppercase tracking-widest text-zinc-500" onClick={() => setEditingId(null)}>
+                                                        Cancel
                                                     </Button>
-                                                    <Button size="sm" className="h-7 w-7 p-0" onClick={() => handleUpdate(cat.id)}>
-                                                        <Check className="h-4 w-4" />
+                                                    <Button size="sm" className="h-8 bg-zinc-900 font-bold text-xs uppercase tracking-widest" onClick={() => handleUpdate(cat.id)}>
+                                                        Save
                                                     </Button>
                                                 </div>
                                             </div>
@@ -293,7 +166,7 @@ export function CategoryManager() {
                                                             onClick={() => {
                                                                 setEditingId(cat.id)
                                                                 setEditingName(cat.name)
-                                                                setEditingTarget(cat.target_time ? formatSecondsToHuman(cat.target_time) : "")
+                                                                setEditingTargetSeconds(cat.target_time || 0)
                                                             }}
                                                         >
                                                             <Pencil className="h-3 w-3" />
@@ -310,8 +183,8 @@ export function CategoryManager() {
                                                     </div>
                                                 </CardHeader>
                                                 <CardContent>
-                                                    <div className="text-sm text-zinc-500 font-medium">
-                                                        Target: <span className="text-zinc-900">{cat.target_time ? formatSecondsToHuman(cat.target_time) : "None"}</span>
+                                                    <div className="text-xs text-zinc-400 font-bold uppercase tracking-widest">
+                                                        Target: <span className="text-zinc-900 font-black">{cat.target_time ? formatSecondsToHuman(cat.target_time) : "None"}</span>
                                                     </div>
                                                 </CardContent>
                                             </>

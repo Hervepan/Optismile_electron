@@ -1,11 +1,22 @@
 import { app, BrowserWindow, ipcMain, globalShortcut, shell } from "electron";
 import { join } from "path";
-import { getConfig, saveConfig } from "@main/config";
+import { getConfig, saveConfig, resetConfig, resetNudgeConfig } from "@main/config";
 import { windowManager } from "@main/windows";
 import { trayManager } from "@main/tray";
 import { activityManager } from "@main/activity";
 
 // --- IPC Handlers ---
+
+ipcMain.handle("reset-nudge-settings", () => {
+  resetNudgeConfig();
+  return true;
+});
+
+ipcMain.handle("reset-settings", () => {
+  const newConfig = resetConfig();
+  registerPipShortcut({ shortcut: newConfig.shortcut, camouflageShortcut: newConfig.camouflageShortcut });
+  return true;
+});
 
 ipcMain.on("open-external-secure", (_event, url: string) => {
   if (/^https?:\/\//.test(url)) {
@@ -20,34 +31,65 @@ ipcMain.on("timer-finished", (_event, duration: number) => {
   windowManager.createSecondaryWindow('save', duration);
 });
 
+ipcMain.on("close-pip", () => {
+  if (windowManager.activePipWindow && !windowManager.activePipWindow.isDestroyed()) {
+    windowManager.activePipWindow.close();
+  }
+});
+
 // ActivityManager now handles "session-saved" and "timer-status-change"
 activityManager.init();
 
 ipcMain.handle("update-shortcut", (_event, newShortcut: string) => {
-  const success = registerPipShortcut(newShortcut);
+  const config = getConfig();
+  const success = registerPipShortcut({ shortcut: newShortcut, camouflageShortcut: config.camouflageShortcut });
   if (success) saveConfig({ shortcut: newShortcut });
   return success;
 });
 
 ipcMain.handle("get-shortcut", () => getConfig().shortcut);
+ipcMain.handle("get-camouflage-shortcut", () => getConfig().camouflageShortcut);
 
-ipcMain.handle("get-nudge-duration", () => getConfig().nudgeDuration);
+ipcMain.handle("update-camouflage-shortcut", (_event, newShortcut: string) => {
+  const config = getConfig();
+  const success = registerPipShortcut({ shortcut: config.shortcut, camouflageShortcut: newShortcut });
+  if (success) saveConfig({ camouflageShortcut: newShortcut });
+  return success;
+});
 
-ipcMain.handle("update-nudge-duration", (_event, duration: number) => {
-  saveConfig({ nudgeDuration: duration });
+ipcMain.handle("get-nudge-seconds", () => getConfig().nudgeDelay);
+ipcMain.handle("update-nudge-seconds", (_event, seconds: number) => {
+  saveConfig({ nudgeDelay: seconds });
   return true;
 });
 
-function registerPipShortcut(shortcut: string) {
+ipcMain.handle("get-nudge-timeout", () => getConfig().nudgeTimeout);
+ipcMain.handle("update-nudge-timeout", (_event, timeout: number) => {
+  saveConfig({ nudgeTimeout: timeout });
+  return true;
+});
+
+function registerPipShortcut(config: { shortcut: string; camouflageShortcut: string }) {
   globalShortcut.unregisterAll();
   try {
-    return globalShortcut.register(shortcut, () => {
-      if (windowManager.activePipWindow && !windowManager.activePipWindow.isDestroyed()) {
-        windowManager.activePipWindow.webContents.send("shortcut-pressed");
-      } else {
-        windowManager.createSecondaryWindow('pip');
-      }
-    });
+    if (config.shortcut) {
+      globalShortcut.register(config.shortcut, () => {
+        if (windowManager.activePipWindow && !windowManager.activePipWindow.isDestroyed()) {
+          windowManager.activePipWindow.webContents.send("shortcut-pressed");
+        } else {
+          windowManager.createSecondaryWindow('pip');
+        }
+      });
+    }
+
+    if (config.camouflageShortcut) {
+      globalShortcut.register(config.camouflageShortcut, () => {
+        if (windowManager.activePipWindow && !windowManager.activePipWindow.isDestroyed()) {
+          windowManager.activePipWindow.webContents.send("toggle-camouflage");
+        }
+      });
+    }
+    return true;
   } catch (e) { return false; }
 }
 
@@ -95,12 +137,12 @@ if (!gotTheLock) {
   app.whenReady().then(() => {
     windowManager.createMainWindow();
     trayManager.createTray();
-    registerPipShortcut(getConfig().shortcut || "Alt+J");
+    const config = getConfig();
+    registerPipShortcut({ shortcut: config.shortcut, camouflageShortcut: config.camouflageShortcut });
   });
 }
 
 app.on("window-all-closed", () => {
-  // Keeping the app alive in the background (System Tray)
   if (process.platform === "darwin") {
     app.dock?.hide();
   }

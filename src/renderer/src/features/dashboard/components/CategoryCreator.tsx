@@ -7,7 +7,8 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { parseHumanToSeconds, formatSecondsToHuman } from "@lib/time"
+import { TimeInput } from "@/components/ui/time-input"
+import { saveCategory } from "@lib/supabase/database"
 
 interface CategoryCreatorProps {
     onSubmit: (name: string, targetTime: number | null) => Promise<void>
@@ -16,23 +17,17 @@ interface CategoryCreatorProps {
 
 export function CategoryCreator({ onSubmit, className }: CategoryCreatorProps) {
     const [name, setName] = useState("")
-    const [target, setTarget] = useState("")
+    const [targetSeconds, setTargetSeconds] = useState<number>(0)
     const [isSubmitting, setIsSubmitting] = useState(false)
 
-    // Parse target to seconds
-    const targetSeconds = target.trim() ? parseHumanToSeconds(target) : null
-
-    // Validation: Name is required. Target is optional, but if provided, must be > 0
-    const isTargetInputValid = !target.trim() || (targetSeconds !== null && targetSeconds > 0)
-
     const handleSubmit = async () => {
-        if (!name || !isTargetInputValid) return
+        if (!name) return
 
         setIsSubmitting(true)
         try {
-            await onSubmit(name, targetSeconds)
+            await onSubmit(name, targetSeconds > 0 ? targetSeconds : null)
             setName("")
-            setTarget("")
+            setTargetSeconds(0)
         } catch (err) {
             console.error("Failed to create category:", err)
         } finally {
@@ -50,45 +45,33 @@ export function CategoryCreator({ onSubmit, className }: CategoryCreatorProps) {
     return (
         <Card className={`border-zinc-200 shadow-none bg-white ${className || ''}`}>
             <CardContent>
-                <div className="space-y-4">
+                <div className="space-y-4 pt-6">
                     <div className="flex flex-col gap-2">
-                        <Label htmlFor="category-name" className="text-sm font-medium">Category Name</Label>
+                        <Label htmlFor="category-name" className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Category Name</Label>
                         <Input
                             id="category-name"
                             value={name}
                             placeholder='Acte: Détartrage'
                             onChange={(e) => setName(e.target.value)}
                             onKeyDown={handleKeyDown}
-                            className="border-zinc-200 h-10"
+                            className="border-zinc-200 h-10 text-sm font-bold focus-visible:ring-zinc-900"
                         />
                     </div>
-                    <div className="flex flex-col gap-2">
-                        <Label htmlFor="category-target" className="text-sm font-medium">Target Time <span className="text-zinc-400 font-normal">(Optional)</span></Label>
-                        <Input
-                            id="category-target"
-                            value={target}
-                            onChange={(e) => setTarget(e.target.value)}
-                            onKeyDown={handleKeyDown}
-                            placeholder="Format: 1h30, 90"
-                            className={`border-zinc-200 h-10 ${!isTargetInputValid ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
-                        />
-                        <div className="flex justify-between items-center h-5">
-                            <p className={`text-[10px] uppercase font-bold tracking-tight ${!isTargetInputValid ? 'text-red-500' : 'text-zinc-400'}`}>
-                                {!isTargetInputValid ? 'Invalid format' : ''}
-                            </p>
-                            {targetSeconds !== null && targetSeconds > 0 && (
-                                <span className="text-[10px] font-bold text-zinc-500 bg-zinc-100 px-2 py-0.5 rounded-sm tracking-tight">
-                                    {formatSecondsToHuman(targetSeconds)}
-                                </span>
-                            )}
-                        </div>
-                    </div>
+                    
+                    <TimeInput 
+                        label="Target Time (Optional)"
+                        value={targetSeconds}
+                        onChange={setTargetSeconds}
+                        placeholder="Format: 1h30, 90"
+                        id="category-target"
+                    />
+
                     <Button
                         onClick={handleSubmit}
-                        disabled={!name || !isTargetInputValid || isSubmitting}
-                        className="w-full bg-zinc-900 text-white hover:bg-zinc-800 flex items-center justify-center gap-2 h-10 shadow-sm"
+                        disabled={!name || isSubmitting}
+                        className="w-full bg-zinc-900 text-white hover:bg-zinc-800 flex items-center justify-center gap-2 h-10 shadow-sm mt-2"
                     >
-                        <div className="flex items-center text-sm font-semibold">
+                        <div className="flex items-center text-sm font-bold uppercase tracking-widest">
                             <Plus className="h-4 w-4 mr-2" />
                             {isSubmitting ? 'Adding...' : 'Add Category'}
                         </div>

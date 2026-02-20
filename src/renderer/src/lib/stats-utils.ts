@@ -90,7 +90,7 @@ export function calculateCategoryStats(sessions: Session[]): CategoryStat[] {
       // 3. Personal Best (Minimum duration recorded)
       const best = total > 0 ? Math.min(...sessions.map((s) => s.duration)) : 0;
 
-      // 4. Success Rate: (Count of sessions meeting target / Total target sessions) * 100
+      // 4. Success Rate: (Count of sessions meeting target / Total sessions) * 100
       let hitRate: number | null = null;
       if (target) {
         const hits = sessions.filter((s) => s.duration <= target).length;

@@ -1,5 +1,5 @@
 {
-  "name": "optismile_electron",
+  "name": "Optismile",
   "version": "1.0.0",
   "main": "./out/main/index.js",
   "type": "module",

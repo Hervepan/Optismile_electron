@@ -43,28 +43,30 @@ export const signOut = async () => {
 export const handleAuthCallback = async (urlStr: string): Promise<void> => {
   try {
     console.log("Parsing auth callback URL:", urlStr);
-    const url = new URL(urlStr.replace("#", "?")); 
+    
+    // Normalize URL for parsing (standardize custom protocol to https-like for URL constructor)
+    let normalizedUrl = urlStr;
+    if (urlStr.startsWith('optismile://')) {
+      normalizedUrl = urlStr.replace('optismile://', 'https://');
+    }
+    
+    const url = new URL(normalizedUrl.replace("#", "?")); 
     const params = new URLSearchParams(url.search);
 
     const accessToken = params.get("access_token");
     const refreshToken = params.get("refresh_token");
 
     if (!accessToken || !refreshToken) {
-      console.error("No tokens found in deep link. URL might be malformed or missing hash fragment.");
+      console.error("No tokens found in deep link.");
       return;
     }
 
-    console.log("Tokens found, setting session...");
     const { error } = await supabase.auth.setSession({
       access_token: accessToken,
       refresh_token: refreshToken,
     });
 
-    if (error) {
-      console.error("Supabase setSession error:", error.message);
-      throw error;
-    }
-    
+    if (error) throw error;
     console.log("Session set successfully!");
   } catch (err) {
     console.error("Failed to handle auth callback:", err);

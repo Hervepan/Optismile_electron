@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { supabase } from '@lib/supabase/client'
 import { CategoryManager } from '@/features/dashboard/components/CategoryManager'
 import { HistorySection } from '@/features/dashboard/components/HistorySection'
 import { StatisticsSection } from '@/features/dashboard/components/stats/StatisticsSection'
+import { SettingsSection } from '@/features/dashboard/components/SettingsSection'
 import { User } from '@supabase/supabase-js'
 import { 
     Tabs, 
@@ -14,7 +15,8 @@ import {
     LayoutDashboard, 
     History, 
     BarChart3, 
-    LogOut
+    LogOut,
+    Settings2
 } from 'lucide-react'
 
 export function DashboardPage({ user }: { user: User }) {
@@ -59,6 +61,13 @@ export function DashboardPage({ user }: { user: User }) {
                                     <BarChart3 className="w-4 h-4 mr-2" />
                                     Statistics
                                 </TabsTrigger>
+                                <TabsTrigger 
+                                    value="settings" 
+                                    className="data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 data-[state=active]:shadow-sm border border-transparent data-[state=active]:border-blue-100 rounded-md px-3 transition-all"
+                                >
+                                    <Settings2 className="w-4 h-4 mr-2" />
+                                    Settings
+                                </TabsTrigger>
                             </TabsList>
                         </div>
 
@@ -93,6 +102,10 @@ export function DashboardPage({ user }: { user: User }) {
 
                     <TabsContent value="statistics" className="mt-0 focus-visible:ring-0 focus-visible:ring-offset-0">
                         <StatisticsSection />
+                    </TabsContent>
+
+                    <TabsContent value="settings" className="mt-0 focus-visible:ring-0 focus-visible:ring-offset-0">
+                        <SettingsSection />
                     </TabsContent>
                 </main>
             </Tabs>

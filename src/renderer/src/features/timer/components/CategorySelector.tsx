@@ -3,6 +3,7 @@ import { getCategories, saveSession, saveCategory, type Category } from '@lib/su
 import { Loader2, X, Plus, ArrowLeft } from 'lucide-react'
 import { Button } from "@components/ui/button"
 import { Textarea } from "@components/ui/textarea"
+import { toast } from 'sonner'
 import {
     Combobox,
     ComboboxInput,
@@ -13,7 +14,13 @@ import {
 } from "@components/ui/combobox"
 import { CategoryCreator } from "@/features/dashboard/components/CategoryCreator"
 
-export function CategorySelector({ duration, onSaved, isAuthenticated }: any) {
+interface CategorySelectorProps {
+    duration: number;
+    onSaved: () => void;
+    isAuthenticated: boolean;
+}
+
+export function CategorySelector({ duration, onSaved, isAuthenticated }: CategorySelectorProps) {
     const [categories, setCategories] = useState<Category[]>([])
     const [selectedCategory, setSelectedCategory] = useState<Category | null>(null)
     const [comment, setComment] = useState("");
@@ -29,6 +36,7 @@ export function CategorySelector({ duration, onSaved, isAuthenticated }: any) {
             return data
         } catch (err) {
             console.error(err)
+            toast.error("Failed to load categories")
             return []
         } finally {
             setIsLoadingCategories(false)
@@ -44,13 +52,23 @@ export function CategorySelector({ duration, onSaved, isAuthenticated }: any) {
         setLoading(true)
         try {
             await saveSession(duration, selectedCategory.id, comment)
+            localStorage.removeItem('optismile_unsaved_session'); // Clear draft on success
+            toast.success("Session saved successfully")
             onSaved()
         } catch (err) {
             console.error(err)
+            toast.error("Failed to save session. Please try again.")
         } finally {
             setLoading(false)
         }
     }
+
+    // --- DRAFT PROTECTION ---
+    useEffect(() => {
+        // Save to draft immediately on mount/change
+        const draft = { duration, comment, timestamp: Date.now() };
+        localStorage.setItem('optismile_unsaved_session', JSON.stringify(draft));
+    }, [duration, comment]);
 
     const handleCreateCategory = async (name: string, targetTime: number | null) => {
         try {
@@ -172,6 +190,12 @@ export function CategorySelector({ duration, onSaved, isAuthenticated }: any) {
                         placeholder="Comment (Optional) (Shift+Enter to save)" 
                         value={comment} 
                         onChange={(e) => setComment(e.target.value)}
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter' && e.shiftKey) {
+                                e.preventDefault();
+                                handleSaveSession();
+                            }
+                        }}
                         className="w-full min-h-32 p-4 border border-zinc-200 rounded-md focus-visible:ring-zinc-900 transition-all text-sm font-medium no-drag"
                     />
                 </div>

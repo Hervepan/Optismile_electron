@@ -5,8 +5,14 @@ contextBridge.exposeInMainWorld("api", {
   settings: {
     getShortcut: () => ipcRenderer.invoke("get-shortcut"),
     updateShortcut: (newShortcut: string) => ipcRenderer.invoke("update-shortcut", newShortcut),
-    getNudgeDuration: () => ipcRenderer.invoke("get-nudge-duration"),
-    updateNudgeDuration: (duration: number) => ipcRenderer.invoke("update-nudge-duration", duration),
+    getCamouflageShortcut: () => ipcRenderer.invoke("get-camouflage-shortcut"),
+    updateCamouflageShortcut: (newShortcut: string) => ipcRenderer.invoke("update-camouflage-shortcut", newShortcut),
+    getNudgeSeconds: () => ipcRenderer.invoke("get-nudge-seconds"),
+    updateNudgeSeconds: (seconds: number) => ipcRenderer.invoke("update-nudge-seconds", seconds),
+    getNudgeTimeout: () => ipcRenderer.invoke("get-nudge-timeout"),
+    updateNudgeTimeout: (timeout: number) => ipcRenderer.invoke("update-nudge-timeout", timeout),
+    resetNudgeSettings: () => ipcRenderer.invoke("reset-nudge-settings"),
+    resetSettings: () => ipcRenderer.invoke("reset-settings"),
   },
   auth: {
     openExternal: (url: string) =>
@@ -25,15 +31,28 @@ contextBridge.exposeInMainWorld("api", {
       return () => {
         ipcRenderer.removeListener("shortcut-pressed", subscription);
       };
+    },
+    onSessionSaved: (callback: () => void) => {
+      const subscription = () => callback();
+      ipcRenderer.on("session-saved-success", subscription);
+      return () => {
+        ipcRenderer.removeListener("session-saved-success", subscription);
+      };
     }
   },
   timer: {
     finish: (duration: number) => ipcRenderer.send("timer-finished", duration),
+    close: () => ipcRenderer.send("close-pip"),
     updateStatus: (isRunning: boolean) => ipcRenderer.send("timer-status-change", isRunning),
     onNudge: (callback: (type: string) => void) => {
       const subscription = (_event: any, type: string) => callback(type);
       ipcRenderer.on("show-nudge", subscription);
       return () => ipcRenderer.removeListener("show-nudge", subscription);
+    },
+    onToggleCamouflage: (callback: () => void) => {
+      const subscription = () => callback();
+      ipcRenderer.on("toggle-camouflage", subscription);
+      return () => ipcRenderer.removeListener("toggle-camouflage", subscription);
     }
   },
   session: {
